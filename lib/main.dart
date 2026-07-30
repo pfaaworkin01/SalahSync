@@ -115,12 +115,15 @@ class _MyAppState extends State<MyApp> {
               ),
             ),
           ),
-          home: MainDashboard(manager: _manager),
+          home: WebPhoneFrame(
+            child: MainDashboard(manager: _manager),
+          ),
         );
       },
     );
   }
 }
+
 
 class MainDashboard extends StatefulWidget {
   final SalahSilentManager manager;
@@ -207,34 +210,40 @@ class _MainDashboardState extends State<MainDashboard>
                   ),
                 ),
                 const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'SalahSync',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
-                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'SalahSync',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5,
+                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                    Text(
-                      _manager.isTimeAccelerated
-                          ? 'Simulated Time Active'
-                          : 'Automatic Sound Profiles',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: _manager.isTimeAccelerated
-                            ? Theme.of(context).colorScheme.secondary
-                            : const Color(0xFF64748B),
-                        fontWeight: FontWeight.w500,
+                      Text(
+                        _manager.isTimeAccelerated
+                            ? 'Simulated Time Active'
+                            : 'Automatic Sound Profiles',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: _manager.isTimeAccelerated
+                              ? Theme.of(context).colorScheme.secondary
+                              : const Color(0xFF64748B),
+                          fontWeight: FontWeight.w500,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),
+
             actions: [
               // Theme Toggle Button
               IconButton(
@@ -386,31 +395,36 @@ class _MainDashboardState extends State<MainDashboard>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    dateStr,
-                    style: TextStyle(
-                      color: secondaryTextColor,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      dateStr,
+                      style: TextStyle(
+                        color: secondaryTextColor,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    nowStr,
-                    style: TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.bold,
-                      color: _manager.isTimeAccelerated
-                          ? Theme.of(context).colorScheme.secondary
-                          : textColor,
-                      fontFeatures: const [FontFeature.tabularFigures()],
+                    const SizedBox(height: 4),
+                    Text(
+                      nowStr,
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: _manager.isTimeAccelerated
+                            ? Theme.of(context).colorScheme.secondary
+                            : textColor,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+
               // Current State Indicator Badge
               Container(
                 padding: const EdgeInsets.symmetric(
@@ -966,6 +980,7 @@ class _MainDashboardState extends State<MainDashboard>
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
                       Icons.developer_mode_rounded,
@@ -983,11 +998,11 @@ class _MainDashboardState extends State<MainDashboard>
                     ),
                   ],
                 ),
-                // Time Acceleration Toggle
                 Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      'Fast Time (1s = 1m)',
+                      'Fast Time',
                       style: TextStyle(
                         fontSize: 11,
                         color: isDark
@@ -995,16 +1010,20 @@ class _MainDashboardState extends State<MainDashboard>
                             : const Color(0xFF475569),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    CupertinoSwitch(
-                      activeColor: Theme.of(context).colorScheme.secondary,
-                      value: _manager.isTimeAccelerated,
-                      onChanged: (val) => _manager.toggleTimeAcceleration(val),
+                    const SizedBox(width: 6),
+                    Transform.scale(
+                      scale: 0.8,
+                      child: CupertinoSwitch(
+                        activeColor: Theme.of(context).colorScheme.secondary,
+                        value: _manager.isTimeAccelerated,
+                        onChanged: (val) => _manager.toggleTimeAcceleration(val),
+                      ),
                     ),
                   ],
                 ),
               ],
             ),
+
             const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1393,3 +1412,166 @@ class _MainDashboardState extends State<MainDashboard>
     );
   }
 }
+
+class WebPhoneFrame extends StatefulWidget {
+  final Widget child;
+  const WebPhoneFrame({super.key, required this.child});
+
+  @override
+  State<WebPhoneFrame> createState() => _WebPhoneFrameState();
+}
+
+class _WebPhoneFrameState extends State<WebPhoneFrame> {
+  bool _showFrame = true;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth <= 600 || !_showFrame) {
+          return widget.child;
+        }
+
+        const phoneWidth = 412.0;
+        final phoneHeight = (constraints.maxHeight * 0.92).clamp(700.0, 890.0);
+
+        return Scaffold(
+          backgroundColor: const Color(0xFF070A14),
+          body: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                decoration: const BoxDecoration(
+                  color: Color(0xFF0F172A),
+                  border: Border(bottom: BorderSide(color: Color(0xFF1E293B))),
+                ),
+                child: Row(
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF0D9488).withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(Icons.phone_android, color: Color(0xFF0D9488), size: 20),
+                        ),
+                        const SizedBox(width: 12),
+                        const Text(
+                          'SalahSync Mobile Preview',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontFamily: 'Outfit',
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Spacer(),
+                    TextButton.icon(
+                      onPressed: () {
+                        setState(() {
+                          _showFrame = !_showFrame;
+                        });
+                      },
+                      icon: Icon(
+                        _showFrame ? Icons.fullscreen : Icons.phone_android,
+                        size: 18,
+                        color: const Color(0xFF94A3B8),
+                      ),
+                      label: Text(
+                        _showFrame ? 'Full Width View' : 'Phone Frame View',
+                        style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Center(
+                  child: Container(
+                    width: phoneWidth,
+                    height: phoneHeight,
+                    margin: const EdgeInsets.symmetric(vertical: 14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0F172A),
+                      borderRadius: BorderRadius.circular(44),
+                      border: Border.all(color: const Color(0xFF334155), width: 10),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.6),
+                          blurRadius: 32,
+                          spreadRadius: 4,
+                          offset: const Offset(0, 16),
+                        ),
+                        BoxShadow(
+                          color: const Color(0xFF0D9488).withValues(alpha: 0.15),
+                          blurRadius: 40,
+                          spreadRadius: 0,
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(34),
+                      child: Stack(
+                        children: [
+                          MediaQuery(
+                            data: MediaQuery.of(context).copyWith(
+                              size: Size(phoneWidth, phoneHeight),
+                              padding: const EdgeInsets.only(top: 28, bottom: 16),
+                            ),
+                            child: widget.child,
+                          ),
+                          Positioned(
+                            top: 8,
+                            left: 0,
+                            right: 0,
+                            child: Center(
+                              child: Container(
+                                width: 90,
+                                height: 18,
+                                decoration: BoxDecoration(
+                                  color: Colors.black,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Container(
+                                      width: 8,
+                                      height: 8,
+                                      decoration: const BoxDecoration(
+                                        color: Color(0xFF1E293B),
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Container(
+                                      width: 36,
+                                      height: 4,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF1E293B),
+                                        borderRadius: BorderRadius.circular(2),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
