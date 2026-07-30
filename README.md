@@ -1,9 +1,11 @@
 # 🕌 SalahSync
 
 [![Flutter Version](https://img.shields.io/badge/Flutter-%E2%89%A5%203.12.2-02569B?logo=flutter&logoColor=white)](https://flutter.dev)
-[![Platform Support](https://img.shields.io/badge/Platform-Android%20%7C%20iOS-3DDC84?logo=android&logoColor=white)](https://flutter.dev)
+[![Platform Support](https://img.shields.io/badge/Platform-Android%20%7C%20iOS%20%7C%20Web-3DDC84?logo=flutter&logoColor=white)](https://flutter.dev)
+[![Live Web Demo](https://img.shields.io/badge/Live%20Demo-Try%20it%20now-brightgreen?logo=googlechrome&logoColor=white)](https://princefahimal-araf.github.io/SalahSync/)
 [![Design Style](https://img.shields.io/badge/Design-Material%203%20%7C%20Premium-009688)](https://m3.material.io/)
 [![License](https://img.shields.io/badge/License-MIT-teal.svg)](LICENSE)
+
 
 **SalahSync** is a premium, intelligent mobile application built using Flutter that automatically manages your device's sound profile during congregational Salah and Jamaat periods. By bridging Flutter's core framework with native platform channels, SalahSync ensures that your device switches silently into the background during prayer and seamlessly restores your original sound settings immediately after.
 
