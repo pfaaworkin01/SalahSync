@@ -123,9 +123,11 @@ class SalahSilentManager extends ChangeNotifier {
     _loadFromPrefs().then((_) {
       _checkAndroidPermission();
       _startTimers();
+      _syncNativeAndroidAlarms();
       _addLog('SalahSync initialized successfully.');
     });
   }
+
 
   List<SalahConfiguration> get configs => _configs;
   List<LogEntry> get logs => _logs;
@@ -200,7 +202,9 @@ class SalahSilentManager extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     final configsJson = jsonEncode(_configs.map((e) => e.toJson()).toList());
     await prefs.setString('salah_configs', configsJson);
+    _syncNativeAndroidAlarms();
   }
+
 
   Future<void> _saveStateToPrefs() async {
     final prefs = await SharedPreferences.getInstance();
@@ -228,6 +232,7 @@ class SalahSilentManager extends ChangeNotifier {
     _isAutoSilentEnabled = value;
     _addLog('Automatic Silent Mode ${value ? "ENABLED" : "DISABLED"}.');
     _saveStateToPrefs();
+    _syncNativeAndroidAlarms();
     
     // If disabled, immediately release any active overrides
     if (!value && isCurrentlySilenced) {
@@ -235,6 +240,7 @@ class SalahSilentManager extends ChangeNotifier {
     }
     notifyListeners();
   }
+
 
   void updateSalahConfig(SalahConfiguration updated) {
     final index = _configs.indexWhere((element) => element.name == updated.name);
@@ -450,8 +456,54 @@ class SalahSilentManager extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> _syncNativeAndroidAlarms() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
+    try {
+      await _platform.invokeMethod('cancelNativeAlarms');
+      if (!_isAutoSilentEnabled) return;
+
+      final now = DateTime.now();
+      int alarmIdCounter = 1;
+
+      for (var config in _configs) {
+        if (!config.isEnabled) continue;
+
+        DateTime prayerTimeToday = DateTime(
+          now.year,
+          now.month,
+          now.day,
+          config.startTime.hour,
+          config.startTime.minute,
+        );
+
+        DateTime muteTriggerTime = prayerTimeToday.subtract(Duration(minutes: config.preMuteMinutes));
+
+        if (muteTriggerTime.isBefore(now)) {
+          muteTriggerTime = muteTriggerTime.add(const Duration(days: 1));
+        }
+
+        if (config.name == "Jumu'ah") {
+          while (muteTriggerTime.weekday != DateTime.friday) {
+            muteTriggerTime = muteTriggerTime.add(const Duration(days: 1));
+          }
+        }
+
+        await _platform.invokeMethod('scheduleNativeAlarm', {
+          'salahName': config.name,
+          'triggerTimeMillis': muteTriggerTime.millisecondsSinceEpoch,
+          'targetMode': config.targetMode,
+          'durationMinutes': config.silentDurationMinutes,
+          'alarmId': alarmIdCounter++,
+        });
+      }
+    } catch (e) {
+      debugPrint('Error syncing native alarms: $e');
+    }
+  }
+
   // Android DND Permissions
   Future<void> _checkAndroidPermission() async {
+
     if (defaultTargetPlatform == TargetPlatform.android) {
       try {
         final hasAccess = await _platform.invokeMethod<bool>('hasNotificationPolicyAccess');

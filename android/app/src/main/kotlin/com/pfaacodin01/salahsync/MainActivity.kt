@@ -1,6 +1,8 @@
 package com.pfaacodin01.salahsync
 
+import android.app.AlarmManager
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.media.AudioManager
@@ -66,6 +68,62 @@ class MainActivity : FlutterActivity() {
                     } else {
                         result.success(false)
                     }
+                }
+                "scheduleNativeAlarm" -> {
+                    val salahName = call.argument<String>("salahName") ?: "Salah"
+                    val triggerTimeMillis = call.argument<Number>("triggerTimeMillis")?.toLong() ?: 0L
+                    val targetMode = call.argument<String>("targetMode") ?: "silent"
+                    val durationMinutes = call.argument<Int>("durationMinutes") ?: 20
+                    val alarmId = call.argument<Int>("alarmId") ?: 0
+
+                    val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+                    val intent = Intent(this, SalahAlarmReceiver::class.java).apply {
+                        putExtra("action", "MUTE")
+                        putExtra("salahName", salahName)
+                        putExtra("targetMode", targetMode)
+                        putExtra("durationMinutes", durationMinutes)
+                        putExtra("alarmId", alarmId)
+                    }
+
+                    val pendingIntent = PendingIntent.getBroadcast(
+                        this,
+                        alarmId,
+                        intent,
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                    )
+
+                    if (triggerTimeMillis > System.currentTimeMillis()) {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                            alarmManager.setExactAndAllowWhileIdle(
+                                AlarmManager.RTC_WAKEUP,
+                                triggerTimeMillis,
+                                pendingIntent
+                            )
+                        } else {
+                            alarmManager.setExact(
+                                AlarmManager.RTC_WAKEUP,
+                                triggerTimeMillis,
+                                pendingIntent
+                            )
+                        }
+                    }
+                    result.success(true)
+                }
+                "cancelNativeAlarms" -> {
+                    val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+                    for (id in 0..10) {
+                        val intent = Intent(this, SalahAlarmReceiver::class.java)
+                        val pendingIntent = PendingIntent.getBroadcast(
+                            this,
+                            id,
+                            intent,
+                            PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
+                        )
+                        if (pendingIntent != null) {
+                            alarmManager.cancel(pendingIntent)
+                        }
+                    }
+                    result.success(true)
                 }
                 else -> {
                     result.notImplemented()
