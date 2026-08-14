@@ -41,6 +41,12 @@ jobs:
       - name: 📋 Copy APK to Web directory for Direct Web Link
         run: cp build/app/outputs/flutter-apk/app-release.apk build/web/SalahSync-release.apk
 
+      - name: 🎨 Prepare Landing Page & Flutter Web App
+        run: |
+          cp build/web/index.html build/web/app.html
+          cp web/landing.html build/web/index.html
+
+
       - name: 📤 Upload APK Artifact to GitHub
         uses: actions/upload-artifact@v4
         with:
