@@ -40,7 +40,8 @@ class SalahAlarmReceiver : BroadcastReceiver() {
                 }
 
                 // Schedule Restore Alarm after durationMinutes
-                scheduleRestoreAlarm(context, alarmId, durationMinutes)
+                scheduleRestoreAlarm(context, alarmId, durationMinutes.toLong())
+
             } catch (e: Exception) {
                 e.printStackTrace()
             }
