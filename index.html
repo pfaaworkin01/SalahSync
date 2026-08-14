@@ -1,46 +1,484 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
-  <base href="/SalahSync/">
-
   <meta charset="UTF-8">
-  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
-
-  <!-- iOS meta tags & icons -->
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="salahsync">
-  <link rel="apple-touch-icon" href="icons/Icon-192.png">
-
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SalahSync — Automatic Sound Profiles for Congregational Prayer</title>
+  <meta name="description" content="SalahSync automatically silences your smartphone ringer during prayer times and restores your ringer state immediately after.">
+  
   <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png"/>
+  <link rel="icon" type="image/png" href="favicon.png">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --bg-dark: #070A14;
+      --bg-card: rgba(30, 41, 59, 0.65);
+      --bg-card-border: rgba(51, 65, 85, 0.6);
+      --primary: #0D9488;
+      --primary-light: #14B8A6;
+      --primary-glow: rgba(13, 148, 136, 0.25);
+      --secondary: #D97706;
+      --secondary-light: #F59E0B;
+      --text-main: #F8FAFC;
+      --text-muted: #94A3B8;
+      --font-heading: 'Outfit', sans-serif;
+      --font-body: 'Inter', sans-serif;
+    }
 
-  <title>salahsync</title>
-  <link rel="manifest" href="manifest.json">
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: var(--font-body);
+      line-height: 1.6;
+      overflow-x: hidden;
+      background-image: 
+        radial-gradient(circle at 15% 20%, rgba(13, 148, 136, 0.12) 0%, transparent 45%),
+        radial-gradient(circle at 85% 60%, rgba(217, 119, 6, 0.08) 0%, transparent 40%);
+      background-attachment: fixed;
+    }
+
+    /* Container */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* Header */
+    header {
+      padding: 24px 0;
+      border-bottom: 1px solid rgba(51, 65, 85, 0.4);
+      backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(7, 10, 20, 0.8);
+    }
+
+    .nav-wrapper {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: var(--text-main);
+    }
+
+    .logo-icon {
+      font-size: 28px;
+    }
+
+    .logo-text {
+      font-family: var(--font-heading);
+      font-weight: 800;
+      font-size: 22px;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #FFFFFF 0%, #CBD5E1 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .btn-header {
+      padding: 8px 18px;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 14px;
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+
+    .btn-outline {
+      border: 1px solid var(--bg-card-border);
+      color: var(--text-main);
+      background: rgba(30, 41, 59, 0.4);
+    }
+
+    .btn-outline:hover {
+      border-color: var(--primary-light);
+      color: var(--primary-light);
+      background: rgba(13, 148, 136, 0.1);
+    }
+
+    /* Hero Section */
+    .hero {
+      padding: 90px 0 60px;
+      text-align: center;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px;
+      border-radius: 100px;
+      background: rgba(13, 148, 136, 0.15);
+      border: 1px solid rgba(20, 184, 166, 0.3);
+      color: var(--primary-light);
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 24px;
+    }
+
+    .hero-title {
+      font-family: var(--font-heading);
+      font-size: clamp(38px, 6vw, 62px);
+      font-weight: 800;
+      line-height: 1.15;
+      letter-spacing: -1px;
+      margin-bottom: 20px;
+      background: linear-gradient(135deg, #FFFFFF 30%, #94A3B8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-title span {
+      background: linear-gradient(135deg, #14B8A6 0%, #0D9488 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-subtitle {
+      max-width: 680px;
+      margin: 0 auto 36px;
+      font-size: 18px;
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+
+    /* CTA Section */
+    .cta-group {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 50px;
+    }
+
+    .btn-cta {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 16px 32px;
+      border-radius: 14px;
+      font-family: var(--font-heading);
+      font-weight: 700;
+      font-size: 16px;
+      text-decoration: none;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      cursor: pointer;
+    }
+
+    .btn-demo {
+      background: linear-gradient(135deg, #0D9488 0%, #0F766E 100%);
+      color: #FFFFFF;
+      box-shadow: 0 10px 25px -5px rgba(13, 148, 136, 0.4);
+    }
+
+    .btn-demo:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 15px 30px -5px rgba(13, 148, 136, 0.6);
+      background: linear-gradient(135deg, #14B8A6 0%, #0D9488 100%);
+    }
+
+    .btn-apk {
+      background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
+      color: #FFFFFF;
+      border: 1px solid var(--primary);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+    }
+
+    .btn-apk:hover {
+      transform: translateY(-2px);
+      background: rgba(13, 148, 136, 0.15);
+      border-color: var(--primary-light);
+      box-shadow: 0 15px 30px -5px rgba(13, 148, 136, 0.2);
+    }
+
+    .btn-icon {
+      font-size: 20px;
+    }
+
+    /* Device Preview Frame */
+    .preview-container {
+      margin: 40px auto 90px;
+      max-width: 900px;
+      padding: 24px;
+      background: rgba(15, 23, 42, 0.5);
+      border: 1px solid var(--bg-card-border);
+      border-radius: 28px;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+    }
+
+    .preview-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+      padding-left: 8px;
+    }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+    .dot-red { background-color: #EF4444; }
+    .dot-yellow { background-color: #F59E0B; }
+    .dot-green { background-color: #10B981; }
+
+    .preview-iframe-wrapper {
+      position: relative;
+      width: 100%;
+      height: 680px;
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid rgba(51, 65, 85, 0.8);
+      background: #000000;
+    }
+
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+
+    /* Features Grid */
+    .features {
+      padding: 60px 0 90px;
+    }
+
+    .section-title {
+      font-family: var(--font-heading);
+      font-size: 32px;
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 12px;
+    }
+
+    .section-desc {
+      text-align: center;
+      color: var(--text-muted);
+      max-width: 600px;
+      margin: 0 auto 50px;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 24px;
+    }
+
+    .feature-card {
+      background: var(--bg-card);
+      border: 1px solid var(--bg-card-border);
+      border-radius: 20px;
+      padding: 32px;
+      transition: all 0.3s ease;
+      backdrop-filter: blur(12px);
+    }
+
+    .feature-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--primary-light);
+      box-shadow: 0 20px 40px -15px var(--primary-glow);
+    }
+
+    .card-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 14px;
+      background: rgba(13, 148, 136, 0.15);
+      border: 1px solid rgba(20, 184, 166, 0.25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      margin-bottom: 20px;
+    }
+
+    .card-title {
+      font-family: var(--font-heading);
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 10px;
+      color: var(--text-main);
+    }
+
+    .card-text {
+      color: var(--text-muted);
+      font-size: 15px;
+      line-height: 1.6;
+    }
+
+    /* Footer */
+    footer {
+      padding: 40px 0;
+      border-top: 1px solid rgba(51, 65, 85, 0.4);
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+
+    footer a {
+      color: var(--primary-light);
+      text-decoration: none;
+    }
+
+    footer a:hover {
+      text-decoration: underline;
+    }
+
+    @media (max-width: 768px) {
+      .preview-iframe-wrapper {
+        height: 540px;
+      }
+      .cta-group {
+        flex-direction: column;
+        width: 100%;
+      }
+      .btn-cta {
+        width: 100%;
+      }
+    }
+  </style>
 </head>
 <body>
-  <!--
-    You can customize the "flutter_bootstrap.js" script.
-    This is useful to provide a custom configuration to the Flutter loader
-    or to give the user feedback during the initialization process.
 
-    For more details:
-    * https://docs.flutter.dev/platform-integration/web/initialization
-  -->
-  <script src="flutter_bootstrap.js" async></script>
+  <!-- Header -->
+  <header>
+    <div class="container nav-wrapper">
+      <a href="#" class="logo">
+        <span class="logo-icon">🕌</span>
+        <span class="logo-text">SalahSync</span>
+      </a>
+      <div class="nav-links">
+        <a href="SalahSync-release.apk" class="btn-header btn-outline" download>📥 Download APK</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="container">
+      <div class="badge">
+        <span>⚡</span> Intelligent Sound Profile Automation
+      </div>
+      <h1 class="hero-title">
+        Peaceful Prayer Time,<br><span>Automated Silence.</span>
+      </h1>
+      <p class="hero-subtitle">
+        SalahSync automatically silences your smartphone ringer during congregational Salah & Jamaat times, then seamlessly restores your original sound settings when prayer ends.
+      </p>
+
+      <!-- 2 Main Action Links -->
+      <div class="cta-group">
+        <a href="app.html" class="btn-cta btn-demo">
+          <span class="btn-icon">🌐</span> Launch Web Live Demo
+        </a>
+        <a href="SalahSync-release.apk" class="btn-cta btn-apk" download>
+          <span class="btn-icon">📱</span> Download Android APK
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Live Demo Preview Section -->
+  <section class="container">
+    <div class="preview-container">
+      <div class="preview-header">
+        <div class="dot dot-red"></div>
+        <div class="dot dot-yellow"></div>
+        <div class="dot dot-green"></div>
+        <span style="font-size: 12px; color: var(--text-muted); margin-left: 8px;">SalahSync Live Interactive Web App</span>
+      </div>
+      <div class="preview-iframe-wrapper">
+        <iframe src="app.html" title="SalahSync Web Live Demo"></iframe>
+      </div>
+    </div>
+  </section>
+
+  <!-- Key Features Grid -->
+  <section class="features">
+    <div class="container">
+      <h2 class="section-title">Built For Seamless Prayer Management</h2>
+      <p class="section-desc">Designed with Material 3, offline-first security, and intelligent volume state memory.</p>
+      
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="card-icon">⏰</div>
+          <h3 class="card-title">Auto-Silence Scheduler</h3>
+          <p class="card-text">Set individual pre-mute offsets (0-15m) and custom duration buffers (5-60m) mapped to Fajr, Dhuhr, Asr, Maghrib, Isha, and Jumu'ah.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="card-icon">🔊</div>
+          <h3 class="card-title">Smart State Restoration</h3>
+          <p class="card-text">Caches your exact system sound mode (Normal, Vibrate, or Silent) before mute events and restores it accurately when prayer ends.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="card-icon">⚡</div>
+          <h3 class="card-title">Quick Manual Mute</h3>
+          <p class="card-text">One-click quick overrides (15, 30, 45, 60 min) for unscheduled prayers or events outside regular scheduler hours.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="card-icon">🚀</div>
+          <h3 class="card-title">Time Accelerator Simulator</h3>
+          <p class="card-text">Built-in 60x speed multiplier letting you fast-forward time to test schedules and observe auto-mute & restoration in seconds.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="card-icon">🔒</div>
+          <h3 class="card-title">Privacy & Offline First</h3>
+          <p class="card-text">100% offline-first. All configurations and logs are saved locally on your device. Zero cloud tracking or data collection.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="card-icon">🛡️</div>
+          <h3 class="card-title">Do Not Disturb Native Bridge</h3>
+          <p class="card-text">Utilizes native Kotlin platform channels (`AudioManager` & Notification Policy Access) for secure system ringer management on Android.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container">
+      <p>🕌 <strong>SalahSync</strong> — Open Source under MIT License.</p>
+      <p style="margin-top: 8px;">
+        <a href="app.html">Web Live Demo</a> &bull; 
+        <a href="SalahSync-release.apk" download>Download APK</a> &bull; 
+        <a href="https://github.com/pfaaworkin01/SalahSync" target="_blank">GitHub Repository</a>
+      </p>
+    </div>
+  </footer>
+
 </body>
 </html>
