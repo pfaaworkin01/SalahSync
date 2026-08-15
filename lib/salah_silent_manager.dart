@@ -354,44 +354,50 @@ class SalahSilentManager extends ChangeNotifier {
       return;
     }
 
-
     // 2. Check if we should enter a Salah silent period
-    // Iterate through daily config. We must match the day/hour/minute.
-    final currentDay = now.weekday; // 5 is Friday
-    final currentHour = now.hour;
-    final currentMin = now.minute;
-
     for (var config in _configs) {
       if (!config.isEnabled) continue;
 
-      // Handle Jumu'ah: only on Fridays
-      if (config.name == "Jumu'ah" && currentDay != DateTime.friday) {
-        continue;
-      }
-      // Handle normal daily Salahs: skip Jumu'ah if not Friday, skip Dhuhr on Friday
-      if (config.name != "Jumu'ah" && currentDay == DateTime.friday && config.name == 'Dhuhr') {
-        continue;
-      }
+      // Handle candidate windows around today (-1 day, today, +1 day for midnight wrap safety)
+      for (int dayOffset in [-1, 0, 1]) {
+        final baseDate = now.add(Duration(days: dayOffset));
 
-      // Calculate start time in minutes from midnight
-      final targetMinutes = config.startTime.hour * 60 + config.startTime.minute;
-      final currentMinutes = currentHour * 60 + currentMin;
+        // Handle Jumu'ah (only Friday) & Dhuhr (skip on Friday)
+        if (config.name == "Jumu'ah" && baseDate.weekday != DateTime.friday) {
+          continue;
+        }
+        if (config.name == 'Dhuhr' && baseDate.weekday == DateTime.friday) {
+          continue;
+        }
 
-      final startMuteMinutes = targetMinutes - config.preMuteMinutes;
-      final endMuteMinutes = targetMinutes + config.silentDurationMinutes;
+        final prayerTime = DateTime(
+          baseDate.year,
+          baseDate.month,
+          baseDate.day,
+          config.startTime.hour,
+          config.startTime.minute,
+        );
 
-      // Check if current time falls in this window
-      if (currentMinutes >= startMuteMinutes && currentMinutes < endMuteMinutes) {
-        // We found an active Salah silent window!
-        final remainingMinutes = endMuteMinutes - currentMinutes;
-        _activeOverrideEndTime = now.add(Duration(minutes: remainingMinutes));
-        _activeOverrideReason = '${config.name} Salah';
-        
-        _addLog('Auto-Silent triggered: ${config.name} Salah start in ${config.preMuteMinutes} mins.');
-        _applySilentMode(config.targetMode);
-        _saveStateToPrefs();
-        notifyListeners();
-        return;
+        final windowStart = prayerTime.subtract(
+          Duration(minutes: config.preMuteMinutes),
+        );
+        final windowEnd = prayerTime.add(
+          Duration(minutes: config.silentDurationMinutes),
+        );
+
+        if ((now.isAfter(windowStart) || now.isAtSameMomentAs(windowStart)) &&
+            now.isBefore(windowEnd)) {
+          _activeOverrideEndTime = windowEnd;
+          _activeOverrideReason = '${config.name} Salah';
+
+          _addLog(
+            'Auto-Silent triggered: ${config.name} Salah (Pre-mute: ${config.preMuteMinutes}m, Silent: ${config.silentDurationMinutes}m).',
+          );
+          _applySilentMode(config.targetMode);
+          _saveStateToPrefs();
+          notifyListeners();
+          return;
+        }
       }
     }
   }
@@ -481,23 +487,43 @@ class SalahSilentManager extends ChangeNotifier {
           config.startTime.minute,
         );
 
-        DateTime muteTriggerTime = prayerTimeToday.subtract(Duration(minutes: config.preMuteMinutes));
+        DateTime muteTriggerTime = prayerTimeToday.subtract(
+          Duration(minutes: config.preMuteMinutes),
+        );
+        DateTime muteEndTime = prayerTimeToday.add(
+          Duration(minutes: config.silentDurationMinutes),
+        );
 
-        if (muteTriggerTime.isBefore(now)) {
-          muteTriggerTime = muteTriggerTime.add(const Duration(days: 1));
+        if (muteEndTime.isBefore(now)) {
+          prayerTimeToday = prayerTimeToday.add(const Duration(days: 1));
+          muteTriggerTime = prayerTimeToday.subtract(
+            Duration(minutes: config.preMuteMinutes),
+          );
+          muteEndTime = prayerTimeToday.add(
+            Duration(minutes: config.silentDurationMinutes),
+          );
         }
 
         if (config.name == "Jumu'ah") {
           while (muteTriggerTime.weekday != DateTime.friday) {
-            muteTriggerTime = muteTriggerTime.add(const Duration(days: 1));
+            prayerTimeToday = prayerTimeToday.add(const Duration(days: 1));
+            muteTriggerTime = prayerTimeToday.subtract(
+              Duration(minutes: config.preMuteMinutes),
+            );
+            muteEndTime = prayerTimeToday.add(
+              Duration(minutes: config.silentDurationMinutes),
+            );
           }
         }
+
+        final totalMuteDurationMinutes =
+            config.preMuteMinutes + config.silentDurationMinutes;
 
         await _platform.invokeMethod('scheduleNativeAlarm', {
           'salahName': config.name,
           'triggerTimeMillis': muteTriggerTime.millisecondsSinceEpoch,
           'targetMode': config.targetMode,
-          'durationMinutes': config.silentDurationMinutes,
+          'durationMinutes': totalMuteDurationMinutes,
           'alarmId': alarmIdCounter++,
         });
       }
@@ -505,6 +531,7 @@ class SalahSilentManager extends ChangeNotifier {
       debugPrint('Error syncing native alarms: $e');
     }
   }
+
 
   // Android DND Permissions
   Future<void> _checkAndroidPermission() async {

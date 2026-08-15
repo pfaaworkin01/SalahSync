@@ -225,7 +225,6 @@ class _MainDashboardState extends State<MainDashboard>
               ],
             ),
 
-
             actions: [
               // Theme Toggle Button
               IconButton(
@@ -244,19 +243,33 @@ class _MainDashboardState extends State<MainDashboard>
               // Global Silent Toggle Switch
               Row(
                 children: [
-                  Text(
-                    _manager.isAutoSilentEnabled
-                        ? 'System Active'
-                        : 'System Paused',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: _manager.isAutoSilentEnabled
-                          ? const Color(0xFF10B981)
-                          : const Color(0xFFEF4444),
-                    ),
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        'System',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: isDark
+                              ? const Color(0xFF94A3B8)
+                              : const Color(0xFF64748B),
+                        ),
+                      ),
+                      Text(
+                        _manager.isAutoSilentEnabled ? 'Active' : 'Paused',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: _manager.isAutoSilentEnabled
+                              ? const Color(0xFF10B981)
+                              : const Color(0xFFEF4444),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: 8),
                   CupertinoSwitch(
                     activeColor: const Color(0xFF10B981),
                     value: _manager.isAutoSilentEnabled,
@@ -265,7 +278,6 @@ class _MainDashboardState extends State<MainDashboard>
                   const SizedBox(width: 12),
                 ],
               ),
-
             ],
           ),
           body: Column(
@@ -281,6 +293,9 @@ class _MainDashboardState extends State<MainDashboard>
                     if (_manager.isCurrentlySilenced)
                       _buildActiveMuteBanner(isDark),
 
+                    // Current Ringer Profile Status Card
+                    _buildRingerStateCard(isDark),
+                    const SizedBox(height: 16),
 
                     // 2. Android DND Permissions Reminder
                     if (Theme.of(context).platform == TargetPlatform.android &&
@@ -373,6 +388,93 @@ class _MainDashboardState extends State<MainDashboard>
 
   // --- UI Section Builders ---
 
+  Widget _buildRingerStateCard(bool isDark) {
+    final isSilenced = _manager.isCurrentlySilenced;
+    final currentSoundMode = isSilenced
+        ? (_manager.configs
+              .firstWhere(
+                (c) => _manager.activeOverrideReason?.contains(c.name) ?? false,
+                orElse: () => SalahConfiguration(
+                  name: '',
+                  startTime: const TimeOfDay(hour: 0, minute: 0),
+                  targetMode: 'silent',
+                ),
+              )
+              .targetMode)
+        : _manager.systemSoundMode;
+
+    final lowerMode = currentSoundMode.toLowerCase();
+    Color ringerTextColor;
+    String ringerTextLabel;
+    IconData ringerIcon;
+
+    if (lowerMode == 'silent' || lowerMode == 'dnd') {
+      ringerTextColor = const Color(0xFFEF4444); // Red
+      ringerTextLabel = 'SILENT';
+      ringerIcon = Icons.volume_off_rounded;
+    } else if (lowerMode == 'vibrate') {
+      ringerTextColor = const Color(0xFFF59E0B); // Yellow
+      ringerTextLabel = 'VIBRATE';
+      ringerIcon = Icons.vibration_rounded;
+    } else {
+      ringerTextColor = const Color(0xFF10B981); // Green
+      ringerTextLabel = 'NORMAL';
+      ringerIcon = Icons.notifications_active_rounded;
+    }
+
+    final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final secondaryTextColor = isDark
+        ? const Color(0xFF94A3B8)
+        : const Color(0xFF475569);
+
+    final bgGradientColors = isDark
+        ? [const Color(0xFF0F172A), const Color(0xFF1E293B)]
+        : [const Color(0xFFF8FAFC), Colors.white];
+
+    final borderColor = isDark
+        ? const Color(0xFF334155)
+        : const Color(0xFFE2E8F0);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: bgGradientColors,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderColor, width: 1.5),
+      ),
+      child: Column(
+        children: [
+          Icon(ringerIcon, size: 32, color: ringerTextColor),
+          const SizedBox(height: 6),
+          Text.rich(
+            TextSpan(
+              text: 'Ringer: ',
+              style: TextStyle(
+                color: textColor,
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+              ),
+              children: [
+                TextSpan(
+                  text: ringerTextLabel,
+                  style: TextStyle(
+                    color: ringerTextColor,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildActiveMuteBanner(bool isDark) {
     final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
     final secondaryTextColor = isDark
@@ -416,9 +518,8 @@ class _MainDashboardState extends State<MainDashboard>
                     if (_manager.activeOverrideEndTime != null)
                       Builder(
                         builder: (context) {
-                          final remaining = _manager.activeOverrideEndTime!.difference(
-                            _manager.currentTime,
-                          );
+                          final remaining = _manager.activeOverrideEndTime!
+                              .difference(_manager.currentTime);
                           final minutes = remaining.inMinutes;
                           final seconds = remaining.inSeconds % 60;
                           final timeStr =
@@ -458,8 +559,6 @@ class _MainDashboardState extends State<MainDashboard>
       ),
     );
   }
-
-
 
   Widget _buildAndroidPermissionWarning() {
     return Card(
@@ -692,7 +791,9 @@ class _MainDashboardState extends State<MainDashboard>
                           return ChoiceChip(
                             label: Text('$mins Mins'),
                             selected: isSelected,
-                            selectedColor: Theme.of(context).colorScheme.primary,
+                            selectedColor: Theme.of(
+                              context,
+                            ).colorScheme.primary,
                             labelStyle: TextStyle(
                               color: isSelected
                                   ? Colors.white
@@ -704,7 +805,8 @@ class _MainDashboardState extends State<MainDashboard>
                                   : FontWeight.normal,
                             ),
                             onSelected: (val) {
-                              if (val) setSheetState(() => selectedMinutes = mins);
+                              if (val)
+                                setSheetState(() => selectedMinutes = mins);
                             },
                           );
                         }).toList(),
@@ -756,9 +858,13 @@ class _MainDashboardState extends State<MainDashboard>
                           Expanded(
                             child: ChoiceChip(
                               avatar: const Icon(Icons.volume_off, size: 16),
-                              label: const Center(child: Text('Do Not Disturb')),
+                              label: const Center(
+                                child: Text('Do Not Disturb'),
+                              ),
                               selected: selectedMode == 'silent',
-                              selectedColor: Theme.of(context).colorScheme.primary,
+                              selectedColor: Theme.of(
+                                context,
+                              ).colorScheme.primary,
 
                               labelStyle: TextStyle(
                                 color: selectedMode == 'silent'
@@ -808,7 +914,9 @@ class _MainDashboardState extends State<MainDashboard>
                             _manager.quickMute(selectedMinutes, selectedMode);
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Theme.of(context).colorScheme.primary,
+                            backgroundColor: Theme.of(
+                              context,
+                            ).colorScheme.primary,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             shape: RoundedRectangleBorder(
@@ -829,7 +937,6 @@ class _MainDashboardState extends State<MainDashboard>
                 ),
               ),
             );
-
           },
         );
       },
@@ -848,7 +955,6 @@ class _MainDashboardState extends State<MainDashboard>
     final inactiveIconBg = isDark
         ? const Color(0xFF334155).withOpacity(0.2)
         : const Color(0xFFE2E8F0);
-
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 6),
@@ -897,10 +1003,7 @@ class _MainDashboardState extends State<MainDashboard>
                     const SizedBox(height: 4),
                     Text(
                       '${config.preMuteMinutes}m buffer • ${config.silentDurationMinutes}m ${config.targetMode == 'silent' ? 'Do Not Disturb' : 'Vibrate'}',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: subtitleColor,
-                      ),
+                      style: TextStyle(fontSize: 12, color: subtitleColor),
                     ),
                   ],
                 ),
@@ -1092,295 +1195,302 @@ class _MainDashboardState extends State<MainDashboard>
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Edit ${config.name} Auto-Mute',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: sheetTextColor,
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: () => Navigator.pop(context),
-                        icon: Icon(Icons.close, color: sheetSubtitleColor),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
-                  // 1. Time Picker Button
-                  Text(
-                    'Start Time',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: sheetSubtitleColor,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  InkWell(
-                    onTap: () async {
-                      final time = await showTimePicker(
-                        context: context,
-                        initialTime: selectedTime,
-                        builder: (context, child) {
-                          return Theme(
-                            data: Theme.of(context).copyWith(
-                              colorScheme: isDark
-                                  ? ColorScheme.dark(
-                                      primary: Theme.of(
-                                        context,
-                                      ).colorScheme.primary,
-                                      onPrimary: Colors.white,
-                                      surface: const Color(0xFF1E293B),
-                                      onSurface: Colors.white,
-                                    )
-                                  : ColorScheme.light(
-                                      primary: Theme.of(
-                                        context,
-                                      ).colorScheme.primary,
-                                      onPrimary: Colors.white,
-                                      surface: Colors.white,
-                                      onSurface: const Color(0xFF0F172A),
-                                    ),
-                            ),
-                            child: child!,
-                          );
-                        },
-                      );
-                      if (time != null) {
-                        setSheetState(() => selectedTime = time);
-                      }
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 14,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? const Color(0xFF0B0F19)
-                            : const Color(0xFFF1F5F9),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: isDark
-                              ? const Color(0xFF334155)
-                              : const Color(0xFFCBD5E1),
-                        ),
-                      ),
-                      child: Row(
+                      Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            tempConfig.formattedTime,
+                            'Edit ${config.name} Auto-Mute',
                             style: TextStyle(
-                              fontSize: 16,
+                              fontSize: 20,
                               fontWeight: FontWeight.bold,
                               color: sheetTextColor,
                             ),
                           ),
-                          Icon(
-                            Icons.access_time_filled_rounded,
-                            color: Theme.of(context).colorScheme.primary,
+                          IconButton(
+                            onPressed: () => Navigator.pop(context),
+                            icon: Icon(Icons.close, color: sheetSubtitleColor),
                           ),
                         ],
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
+                      const SizedBox(height: 16),
 
-                  // 2. Pre-Mute Buffer
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
+                      // 1. Time Picker Button
                       Text(
-                        'Pre-Mute Buffer',
+                        'Start Time',
                         style: TextStyle(
                           fontSize: 13,
                           color: sheetSubtitleColor,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      Text(
-                        '$preMute mins before start',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Theme.of(context).colorScheme.primary,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Slider(
-                    value: preMute.toDouble(),
-                    min: 0,
-                    max: 60,
-                    divisions: 60,
-                    activeColor: Theme.of(context).colorScheme.primary,
-                    onChanged: (val) {
-                      setSheetState(() => preMute = val.round());
-                    },
-                  ),
-                  const SizedBox(height: 12),
-
-                  // 3. Silent Duration
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Silent Period Duration',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: sheetSubtitleColor,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        '$duration mins total',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Theme.of(context).colorScheme.primary,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Slider(
-                    value: duration.toDouble(),
-                    min: 5,
-                    max: 120,
-                    divisions: 23,
-                    activeColor: Theme.of(context).colorScheme.primary,
-                    onChanged: (val) {
-                      setSheetState(() => duration = val.round());
-                    },
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // 4. Mute Mode
-                  Text(
-                    'Sound Profile Mode',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: sheetSubtitleColor,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ChoiceChip(
-                          label: const Center(
-                            child: Text('Do Not Disturb'),
+                      const SizedBox(height: 8),
+                      InkWell(
+                        onTap: () async {
+                          final time = await showTimePicker(
+                            context: context,
+                            initialTime: selectedTime,
+                            builder: (context, child) {
+                              return Theme(
+                                data: Theme.of(context).copyWith(
+                                  colorScheme: isDark
+                                      ? ColorScheme.dark(
+                                          primary: Theme.of(
+                                            context,
+                                          ).colorScheme.primary,
+                                          onPrimary: Colors.white,
+                                          surface: const Color(0xFF1E293B),
+                                          onSurface: Colors.white,
+                                        )
+                                      : ColorScheme.light(
+                                          primary: Theme.of(
+                                            context,
+                                          ).colorScheme.primary,
+                                          onPrimary: Colors.white,
+                                          surface: Colors.white,
+                                          onSurface: const Color(0xFF0F172A),
+                                        ),
+                                ),
+                                child: child!,
+                              );
+                            },
+                          );
+                          if (time != null) {
+                            setSheetState(() => selectedTime = time);
+                          }
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
                           ),
-                          selected: mode == 'silent',
-                          selectedColor: Theme.of(context).colorScheme.primary,
-
-                          labelStyle: TextStyle(
-                            color: mode == 'silent'
-                                ? Colors.white
-                                : (isDark
-                                      ? const Color(0xFF94A3B8)
-                                      : const Color(0xFF475569)),
-                          ),
-                          backgroundColor: isDark
-                              ? const Color(0xFF0B0F19)
-                              : const Color(0xFFF1F5F9),
-                          onSelected: (selected) {
-                            if (selected) setSheetState(() => mode = 'silent');
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ChoiceChip(
-                          label: const Center(child: Text('Vibrate Only')),
-                          selected: mode == 'vibrate',
-                          selectedColor: Theme.of(context).colorScheme.primary,
-                          labelStyle: TextStyle(
-                            color: mode == 'vibrate'
-                                ? Colors.white
-                                : (isDark
-                                      ? const Color(0xFF94A3B8)
-                                      : const Color(0xFF475569)),
-                          ),
-                          backgroundColor: isDark
-                              ? const Color(0xFF0B0F19)
-                              : const Color(0xFFF1F5F9),
-                          onSelected: (selected) {
-                            if (selected) setSheetState(() => mode = 'vibrate');
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 28),
-
-                  // 5. Action Buttons
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () => Navigator.pop(context),
-                          style: OutlinedButton.styleFrom(
-                            side: BorderSide(
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? const Color(0xFF0B0F19)
+                                : const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
                               color: isDark
                                   ? const Color(0xFF334155)
                                   : const Color(0xFFCBD5E1),
                             ),
-                            padding: const EdgeInsets.symmetric(vertical: 14),
                           ),
-                          child: Text(
-                            'Cancel',
-                            style: TextStyle(color: sheetTextColor),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                tempConfig.formattedTime,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: sheetTextColor,
+                                ),
+                              ),
+                              Icon(
+                                Icons.access_time_filled_rounded,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                            ],
                           ),
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () {
-                            _manager.updateSalahConfig(
-                              config.copyWith(
-                                startTime: selectedTime,
-                                preMuteMinutes: preMute,
-                                silentDurationMinutes: duration,
-                                targetMode: mode,
-                              ),
-                            );
-                            Navigator.pop(context);
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Theme.of(
-                              context,
-                            ).colorScheme.primary,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
+                      const SizedBox(height: 20),
+
+                      // 2. Pre-Mute Buffer
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Pre-Mute Buffer',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: sheetSubtitleColor,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                          child: const Text('Save Changes'),
+                          Text(
+                            '$preMute mins before start',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Theme.of(context).colorScheme.primary,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Slider(
+                        value: preMute.toDouble(),
+                        min: 0,
+                        max: 60,
+                        divisions: 60,
+                        activeColor: Theme.of(context).colorScheme.primary,
+                        onChanged: (val) {
+                          setSheetState(() => preMute = val.round());
+                        },
+                      ),
+                      const SizedBox(height: 12),
+
+                      // 3. Silent Duration
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Silent Period Duration',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: sheetSubtitleColor,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            '$duration mins total',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Theme.of(context).colorScheme.primary,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Slider(
+                        value: duration.toDouble(),
+                        min: 5,
+                        max: 120,
+                        divisions: 23,
+                        activeColor: Theme.of(context).colorScheme.primary,
+                        onChanged: (val) {
+                          setSheetState(() => duration = val.round());
+                        },
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // 4. Mute Mode
+                      Text(
+                        'Sound Profile Mode',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: sheetSubtitleColor,
+                          fontWeight: FontWeight.bold,
                         ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ChoiceChip(
+                              label: const Center(
+                                child: Text('Do Not Disturb'),
+                              ),
+                              selected: mode == 'silent',
+                              selectedColor: Theme.of(
+                                context,
+                              ).colorScheme.primary,
+
+                              labelStyle: TextStyle(
+                                color: mode == 'silent'
+                                    ? Colors.white
+                                    : (isDark
+                                          ? const Color(0xFF94A3B8)
+                                          : const Color(0xFF475569)),
+                              ),
+                              backgroundColor: isDark
+                                  ? const Color(0xFF0B0F19)
+                                  : const Color(0xFFF1F5F9),
+                              onSelected: (selected) {
+                                if (selected)
+                                  setSheetState(() => mode = 'silent');
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: ChoiceChip(
+                              label: const Center(child: Text('Vibrate Only')),
+                              selected: mode == 'vibrate',
+                              selectedColor: Theme.of(
+                                context,
+                              ).colorScheme.primary,
+                              labelStyle: TextStyle(
+                                color: mode == 'vibrate'
+                                    ? Colors.white
+                                    : (isDark
+                                          ? const Color(0xFF94A3B8)
+                                          : const Color(0xFF475569)),
+                              ),
+                              backgroundColor: isDark
+                                  ? const Color(0xFF0B0F19)
+                                  : const Color(0xFFF1F5F9),
+                              onSelected: (selected) {
+                                if (selected)
+                                  setSheetState(() => mode = 'vibrate');
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 28),
+
+                      // 5. Action Buttons
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () => Navigator.pop(context),
+                              style: OutlinedButton.styleFrom(
+                                side: BorderSide(
+                                  color: isDark
+                                      ? const Color(0xFF334155)
+                                      : const Color(0xFFCBD5E1),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
+                              ),
+                              child: Text(
+                                'Cancel',
+                                style: TextStyle(color: sheetTextColor),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: () {
+                                _manager.updateSalahConfig(
+                                  config.copyWith(
+                                    startTime: selectedTime,
+                                    preMuteMinutes: preMute,
+                                    silentDurationMinutes: duration,
+                                    targetMode: mode,
+                                  ),
+                                );
+                                Navigator.pop(context);
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Theme.of(
+                                  context,
+                                ).colorScheme.primary,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
+                              ),
+                              child: const Text('Save Changes'),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ],
+                ),
               ),
-            ),
-          ),
+            );
+          },
         );
       },
     );
-  },
-);
   }
 }
-
-
 
 class WebPhoneFrame extends StatefulWidget {
   final Widget child;
