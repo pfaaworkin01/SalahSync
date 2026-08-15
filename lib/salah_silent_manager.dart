@@ -109,12 +109,10 @@ class SalahSilentManager extends ChangeNotifier {
   // Active silent override state
   String? _activeOverrideReason;
   DateTime? _activeOverrideEndTime;
+  DateTime? _dismissedMuteUntilTime;
   String? _originalSoundModeBeforeOverride;
 
-  // Simulator controls
-  bool _isTimeAccelerated = false;
-  DateTime _simulatedTime = DateTime.now();
-  final int _timeSpeedMultiplier = 60; // 1s real time = 1m simulated time
+
   Timer? _schedulerTimer;
   Timer? _androidStatusTimer;
 
@@ -128,7 +126,6 @@ class SalahSilentManager extends ChangeNotifier {
     });
   }
 
-
   List<SalahConfiguration> get configs => _configs;
   List<LogEntry> get logs => _logs;
   bool get isAutoSilentEnabled => _isAutoSilentEnabled;
@@ -137,21 +134,23 @@ class SalahSilentManager extends ChangeNotifier {
   String get systemSoundMode => _systemSoundMode;
   String? get activeOverrideReason => _activeOverrideReason;
   DateTime? get activeOverrideEndTime => _activeOverrideEndTime;
-  bool get isTimeAccelerated => _isTimeAccelerated;
-  DateTime get currentTime => _isTimeAccelerated ? _simulatedTime : DateTime.now();
+  DateTime get currentTime => DateTime.now();
 
   bool get isCurrentlySilenced => _activeOverrideReason != null;
 
+
   void _initDefaults() {
     _configs = [
-      SalahConfiguration(name: 'Fajr', startTime: const TimeOfDay(hour: 5, minute: 0)),
-      SalahConfiguration(name: 'Dhuhr', startTime: const TimeOfDay(hour: 13, minute: 0)),
-      SalahConfiguration(name: 'Asr', startTime: const TimeOfDay(hour: 16, minute: 30)),
-      SalahConfiguration(name: 'Maghrib', startTime: const TimeOfDay(hour: 18, minute: 45)),
-      SalahConfiguration(name: 'Isha', startTime: const TimeOfDay(hour: 20, minute: 15)),
-      SalahConfiguration(name: "Jumu'ah", startTime: const TimeOfDay(hour: 13, minute: 0), silentDurationMinutes: 30),
+      SalahConfiguration(name: 'Fajr', startTime: const TimeOfDay(hour: 5, minute: 0), preMuteMinutes: 10, silentDurationMinutes: 25),
+      SalahConfiguration(name: 'Dhuhr', startTime: const TimeOfDay(hour: 13, minute: 15), preMuteMinutes: 15, silentDurationMinutes: 40),
+      SalahConfiguration(name: 'Asr', startTime: const TimeOfDay(hour: 17, minute: 0), preMuteMinutes: 5, silentDurationMinutes: 20),
+      SalahConfiguration(name: 'Maghrib', startTime: const TimeOfDay(hour: 18, minute: 45), preMuteMinutes: 5, silentDurationMinutes: 25),
+      SalahConfiguration(name: 'Isha', startTime: const TimeOfDay(hour: 20, minute: 30), preMuteMinutes: 5, silentDurationMinutes: 30),
+      SalahConfiguration(name: "Jumu'ah", startTime: const TimeOfDay(hour: 13, minute: 30), preMuteMinutes: 60, silentDurationMinutes: 90),
     ];
   }
+
+
 
   Future<void> _loadFromPrefs() async {
     try {
@@ -172,11 +171,19 @@ class SalahSilentManager extends ChangeNotifier {
         _themeMode = ThemeMode.dark;
       }
 
+      const int currentDefaultsVersion = 3;
+      final savedVersion = prefs.getInt('salah_defaults_version') ?? 0;
+
       final configsJson = prefs.getString('salah_configs');
-      if (configsJson != null) {
+      if (configsJson != null && savedVersion >= currentDefaultsVersion) {
         final List<dynamic> decoded = jsonDecode(configsJson);
         _configs = decoded.map((e) => SalahConfiguration.fromJson(e)).toList();
+      } else {
+        _initDefaults();
+        await prefs.setInt('salah_defaults_version', currentDefaultsVersion);
+        await _saveConfigsToPrefs();
       }
+
 
       final logsJson = prefs.getString('salah_logs');
       if (logsJson != null) {
@@ -188,6 +195,17 @@ class SalahSilentManager extends ChangeNotifier {
     }
     notifyListeners();
   }
+
+  Future<void> resetToDefaultSchedules() async {
+    _initDefaults();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('salah_defaults_version', 3);
+    await _saveConfigsToPrefs();
+    _addLog('Reset all prayer schedules to default values.');
+    notifyListeners();
+  }
+
+
 
   void toggleThemeMode() {
     _themeMode = _themeMode == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
@@ -252,56 +270,38 @@ class SalahSilentManager extends ChangeNotifier {
     }
   }
 
-  void quickMute(int minutes) {
+  void quickMute(int minutes, [String targetMode = 'silent']) {
     if (!_isAutoSilentEnabled) {
       _addLog('Cannot Quick Mute: Auto Silent is disabled.', isSilentChange: false);
       return;
     }
+    _dismissedMuteUntilTime = null;
     final now = currentTime;
     _activeOverrideEndTime = now.add(Duration(minutes: minutes));
-    _activeOverrideReason = 'Quick Mute ($minutes mins)';
+    _activeOverrideReason = 'Manual Mute ($minutes mins)';
     
-    _addLog('Quick Mute activated for $minutes minutes.');
-    _applySilentMode('silent');
+    _addLog('Manual Mute activated for $minutes minutes ($targetMode).');
+    _applySilentMode(targetMode);
     _saveStateToPrefs();
     notifyListeners();
   }
 
-  void cancelQuickMute() {
-    if (_activeOverrideReason != null && _activeOverrideReason!.startsWith('Quick Mute')) {
-      _addLog('Quick Mute cancelled.');
+  void cancelActiveMute() {
+    if (isCurrentlySilenced) {
+      final reason = _activeOverrideReason ?? 'Mute';
+      if (_activeOverrideEndTime != null) {
+        _dismissedMuteUntilTime = _activeOverrideEndTime;
+      }
+      _addLog('$reason cancelled by user.');
       _restoreOriginalSound();
     }
   }
 
-  // Developer Simulator functions
-  void toggleTimeAcceleration(bool value) {
-    _isTimeAccelerated = value;
-    if (value) {
-      _simulatedTime = DateTime.now();
-      _addLog('Time acceleration started (1s real = 1m simulated).');
-    } else {
-      _addLog('Time acceleration stopped. Restoring real-time.');
-      if (isCurrentlySilenced) {
-        _restoreOriginalSound();
-      }
-    }
-    notifyListeners();
+
+  void cancelQuickMute() {
+    cancelActiveMute();
   }
 
-  void mockSalahNow(String name, int durationMinutes) {
-    if (!_isAutoSilentEnabled) {
-      _addLog('Cannot mock Salah: Auto Silent is disabled.');
-      return;
-    }
-    final now = currentTime;
-    _activeOverrideEndTime = now.add(Duration(minutes: durationMinutes));
-    _activeOverrideReason = 'Mock $name Salah';
-    _addLog('Developer Mock: Initiated silent period for $name Salah ($durationMinutes mins).');
-    _applySilentMode('silent');
-    _saveStateToPrefs();
-    notifyListeners();
-  }
 
   void clearLogs() {
     _logs.clear();
@@ -323,23 +323,27 @@ class SalahSilentManager extends ChangeNotifier {
   }
 
   void _runSchedulerTick() {
-    final prevTime = _simulatedTime;
-    if (_isTimeAccelerated) {
-      _simulatedTime = _simulatedTime.add(Duration(seconds: _timeSpeedMultiplier));
-    } else {
-      _simulatedTime = DateTime.now();
-    }
-
-    // Trigger state checks only when minute changes or state is active
-    if (_isTimeAccelerated || prevTime.minute != _simulatedTime.minute || isCurrentlySilenced) {
-      _checkScheduling();
+    _checkScheduling();
+    if (isCurrentlySilenced) {
+      notifyListeners();
     }
   }
+
+
 
   void _checkScheduling() {
     if (!_isAutoSilentEnabled) return;
 
     final now = currentTime;
+
+    // Do not auto-remute if the user manually cancelled this current window
+    if (_dismissedMuteUntilTime != null) {
+      if (now.isBefore(_dismissedMuteUntilTime!)) {
+        return;
+      } else {
+        _dismissedMuteUntilTime = null;
+      }
+    }
 
     // 1. Check if we are currently in an active override
     if (isCurrentlySilenced) {
@@ -349,6 +353,7 @@ class SalahSilentManager extends ChangeNotifier {
       }
       return;
     }
+
 
     // 2. Check if we should enter a Salah silent period
     // Iterate through daily config. We must match the day/hour/minute.

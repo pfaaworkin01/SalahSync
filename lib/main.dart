@@ -115,15 +115,12 @@ class _MyAppState extends State<MyApp> {
               ),
             ),
           ),
-          home: WebPhoneFrame(
-            child: MainDashboard(manager: _manager),
-          ),
+          home: WebPhoneFrame(child: MainDashboard(manager: _manager)),
         );
       },
     );
   }
 }
-
 
 class MainDashboard extends StatefulWidget {
   final SalahSilentManager manager;
@@ -180,11 +177,6 @@ class _MainDashboardState extends State<MainDashboard>
     return AnimatedBuilder(
       animation: _manager,
       builder: (context, _) {
-        final nowStr = DateFormat('hh:mm:ss a').format(_manager.currentTime);
-        final dateStr = DateFormat(
-          'EEEE, MMMM d, y',
-        ).format(_manager.currentTime);
-
         return Scaffold(
           appBar: AppBar(
             backgroundColor: Colors.transparent,
@@ -221,19 +213,17 @@ class _MainDashboardState extends State<MainDashboard>
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                           letterSpacing: 0.5,
-                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                          color: isDark
+                              ? Colors.white
+                              : const Color(0xFF0F172A),
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
                       Text(
-                        _manager.isTimeAccelerated
-                            ? 'Simulated Time Active'
-                            : 'Automatic Sound Profiles',
-                        style: TextStyle(
+                        'Automatic Sound Profiles',
+                        style: const TextStyle(
                           fontSize: 12,
-                          color: _manager.isTimeAccelerated
-                              ? Theme.of(context).colorScheme.secondary
-                              : const Color(0xFF64748B),
+                          color: Color(0xFF64748B),
                           fontWeight: FontWeight.w500,
                         ),
                         overflow: TextOverflow.ellipsis,
@@ -291,9 +281,9 @@ class _MainDashboardState extends State<MainDashboard>
                     vertical: 8,
                   ),
                   children: [
-                    // 1. Status Indicator Card
-                    _buildStatusCard(nowStr, dateStr, isDark),
-                    const SizedBox(height: 16),
+                    // 1. Current Status Card
+                    _buildStatusCard(isDark),
+                    const SizedBox(height: 20),
 
                     // 2. Android DND Permissions Reminder
                     if (Theme.of(context).platform == TargetPlatform.android &&
@@ -308,19 +298,61 @@ class _MainDashboardState extends State<MainDashboard>
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          'Configure Salah Auto-Mute',
-                          style: Theme.of(
-                            context,
-                          ).textTheme.titleLarge?.copyWith(fontSize: 18),
+                        Expanded(
+                          child: Text(
+                            'Configure Salah Auto-Mute',
+                            style: Theme.of(
+                              context,
+                            ).textTheme.titleLarge?.copyWith(fontSize: 18),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                        const Icon(
-                          Icons.settings_outlined,
-                          size: 20,
-                          color: Color(0xFF64748B),
+                        IconButton(
+                          onPressed: () {
+                            showDialog(
+                              context: context,
+                              builder: (context) {
+                                return AlertDialog(
+                                  backgroundColor: Theme.of(
+                                    context,
+                                  ).cardTheme.color,
+                                  title: const Text('Reset Default Schedules?'),
+                                  content: const Text(
+                                    'This will reset all prayer schedules (Fajr, Dhuhr, Asr, Maghrib, Isha, Jumu\'ah) back to default buffer and duration times.',
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context),
+                                      child: const Text('Cancel'),
+                                    ),
+                                    ElevatedButton(
+                                      onPressed: () {
+                                        Navigator.pop(context);
+                                        _manager.resetToDefaultSchedules();
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Theme.of(
+                                          context,
+                                        ).colorScheme.primary,
+                                        foregroundColor: Colors.white,
+                                      ),
+                                      child: const Text('Reset Defaults'),
+                                    ),
+                                  ],
+                                );
+                              },
+                            );
+                          },
+                          icon: const Icon(
+                            Icons.restore_rounded,
+                            size: 20,
+                            color: Color(0xFF64748B),
+                          ),
+                          tooltip: 'Reset Schedules to Default',
                         ),
                       ],
                     ),
+
                     const SizedBox(height: 8),
 
                     // 5. Salah List
@@ -335,9 +367,6 @@ class _MainDashboardState extends State<MainDashboard>
                   ],
                 ),
               ),
-
-              // 7. Developer Simulator Panel
-              _buildSimulatorPanel(isDark),
             ],
           ),
         );
@@ -347,7 +376,7 @@ class _MainDashboardState extends State<MainDashboard>
 
   // --- UI Section Builders ---
 
-  Widget _buildStatusCard(String nowStr, String dateStr, bool isDark) {
+  Widget _buildStatusCard(bool isDark) {
     final isSilenced = _manager.isCurrentlySilenced;
 
     // Choose beautiful background colors based on active theme and silent state
@@ -392,106 +421,68 @@ class _MainDashboardState extends State<MainDashboard>
       padding: const EdgeInsets.all(20),
       child: Column(
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      dateStr,
-                      style: TextStyle(
-                        color: secondaryTextColor,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      nowStr,
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: _manager.isTimeAccelerated
-                            ? Theme.of(context).colorScheme.secondary
-                            : textColor,
-                        fontFeatures: const [FontFeature.tabularFigures()],
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
+          // Full Width Current State Indicator Badge
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: isSilenced
+                  ? Theme.of(context).colorScheme.secondary.withOpacity(0.15)
+                  : (isDark
+                        ? Colors.white.withOpacity(0.05)
+                        : Colors.black.withOpacity(0.03)),
+              borderRadius: BorderRadius.circular(100),
+              border: Border.all(
+                color: isSilenced
+                    ? Theme.of(context).colorScheme.secondary
+                    : (isDark
+                          ? const Color(0xFF475569)
+                          : const Color(0xFFCBD5E1)),
+                width: 1,
               ),
-
-              // Current State Indicator Badge
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: isSilenced
-                      ? Theme.of(
-                          context,
-                        ).colorScheme.secondary.withOpacity(0.15)
-                      : (isDark
-                            ? Colors.white.withOpacity(0.05)
-                            : Colors.black.withOpacity(0.03)),
-                  borderRadius: BorderRadius.circular(100),
-                  border: Border.all(
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (isSilenced)
+                  AnimatedBuilder(
+                    animation: _pulseController!,
+                    builder: (context, child) {
+                      return Opacity(
+                        opacity: _pulseController!.value,
+                        child: Container(
+                          width: 10,
+                          height: 10,
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.secondary,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      );
+                    },
+                  )
+                else
+                  const Icon(
+                    Icons.check_circle_outline_rounded,
+                    color: Color(0xFF10B981),
+                    size: 16,
+                  ),
+                const SizedBox(width: 8),
+                Text(
+                  isSilenced ? 'SILENT MODE ACTIVE' : 'RINGER NORMAL',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
                     color: isSilenced
                         ? Theme.of(context).colorScheme.secondary
-                        : (isDark
-                              ? const Color(0xFF475569)
-                              : const Color(0xFFCBD5E1)),
-                    width: 1,
+                        : secondaryTextColor,
+                    letterSpacing: 0.8,
                   ),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (isSilenced)
-                      AnimatedBuilder(
-                        animation: _pulseController!,
-                        builder: (context, child) {
-                          return Opacity(
-                            opacity: _pulseController!.value,
-                            child: Container(
-                              width: 8,
-                              height: 8,
-                              decoration: BoxDecoration(
-                                color: Theme.of(context).colorScheme.secondary,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                          );
-                        },
-                      )
-                    else
-                      const Icon(
-                        Icons.check_circle_outline_rounded,
-                        color: Color(0xFF10B981),
-                        size: 14,
-                      ),
-                    const SizedBox(width: 6),
-                    Text(
-                      isSilenced ? 'SILENT MODE ACTIVE' : 'RINGER NORMAL',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: isSilenced
-                            ? Theme.of(context).colorScheme.secondary
-                            : secondaryTextColor,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
+
           Divider(
             color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
             height: 30,
@@ -534,17 +525,21 @@ class _MainDashboardState extends State<MainDashboard>
                   );
                 },
               ),
-            if (_manager.activeOverrideReason != null &&
-                _manager.activeOverrideReason!.startsWith('Quick Mute')) ...[
-              const SizedBox(height: 12),
+            if (isSilenced) ...[
+              const SizedBox(height: 14),
               OutlinedButton.icon(
-                onPressed: () => _manager.cancelQuickMute(),
-                icon: const Icon(Icons.volume_up_rounded, size: 16),
+                onPressed: () => _manager.cancelActiveMute(),
+                icon: const Icon(Icons.volume_up_rounded, size: 18),
                 label: const Text('Cancel Mute Now'),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: Theme.of(context).colorScheme.secondary,
                   side: BorderSide(
                     color: Theme.of(context).colorScheme.secondary,
+                    width: 1.5,
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 10,
                   ),
                 ),
               ),
@@ -555,16 +550,19 @@ class _MainDashboardState extends State<MainDashboard>
                 Expanded(
                   child: Column(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.shield_rounded,
                         size: 36,
-                        color: Color(0xFF0D9488),
+                        color: _manager.isAutoSilentEnabled
+                            ? const Color(0xFF0D9488)
+                            : Theme.of(context).colorScheme.secondary,
                       ),
                       const SizedBox(height: 6),
                       Text(
                         _manager.isAutoSilentEnabled
                             ? 'Active Guard'
                             : 'System Paused',
+
                         style: TextStyle(
                           color: textColor,
                           fontSize: 13,
@@ -640,24 +638,28 @@ class _MainDashboardState extends State<MainDashboard>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Row(
+            Row(
               children: [
-                Icon(
+                const Icon(
                   Icons.warning_amber_rounded,
                   color: Color(0xFFEF4444),
                   size: 24,
                 ),
-                SizedBox(width: 10),
-                Text(
-                  'Do Not Disturb Access Required',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                    fontSize: 15,
+                const SizedBox(width: 10),
+                Expanded(
+                  child: const Text(
+                    'Do Not Disturb Access Required',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      fontSize: 15,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
             ),
+
             const SizedBox(height: 8),
             const Text(
               'Android requires "Do Not Disturb" policy permission so the app can automatically put the phone into Silent or Vibrate mode.',
@@ -679,15 +681,20 @@ class _MainDashboardState extends State<MainDashboard>
   }
 
   Widget _buildQuickMuteSection(bool isDark) {
-    final durations = [15, 30, 45, 60];
     final isSilenced = _manager.isCurrentlySilenced;
+    final cardColor = isSilenced
+        ? (isDark ? const Color(0xFF0B0F19) : const Color(0xFFE2E8F0))
+        : (isDark ? const Color(0xFF1E293B) : Colors.white);
+    final borderColor = isSilenced
+        ? (isDark ? const Color(0xFF1E293B) : const Color(0xFFCBD5E1))
+        : (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 8),
         Text(
-          'Quick Manual Override',
+          'Manual Override',
           style: TextStyle(
             color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569),
             fontWeight: FontWeight.bold,
@@ -695,62 +702,294 @@ class _MainDashboardState extends State<MainDashboard>
           ),
         ),
         const SizedBox(height: 8),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: durations.map((minutes) {
-            final cardColor = isSilenced
-                ? (isDark ? const Color(0xFF0B0F19) : const Color(0xFFE2E8F0))
-                : (isDark ? const Color(0xFF1E293B) : Colors.white);
-
-            final borderColor = isSilenced
-                ? (isDark ? const Color(0xFF1E293B) : const Color(0xFFCBD5E1))
-                : (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0));
-
-            return Expanded(
-              child: GestureDetector(
-                onTap: isSilenced ? null : () => _manager.quickMute(minutes),
-                child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 4),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
+        InkWell(
+          onTap: isSilenced
+              ? null
+              : () => _showSelectManualOverrideBottomSheet(),
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            decoration: BoxDecoration(
+              color: cardColor,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: borderColor, width: 1.5),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: cardColor,
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.primary.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: borderColor, width: 1),
                   ),
+                  child: Icon(
+                    Icons.timer_outlined,
+                    color: isSilenced
+                        ? (isDark
+                              ? const Color(0xFF475569)
+                              : const Color(0xFF94A3B8))
+                        : Theme.of(context).colorScheme.primary,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(
-                        Icons.volume_off_rounded,
-                        size: 20,
-                        color: isSilenced
-                            ? (isDark
-                                  ? const Color(0xFF475569)
-                                  : const Color(0xFF94A3B8))
-                            : Theme.of(context).colorScheme.primary,
-                      ),
-                      const SizedBox(height: 6),
                       Text(
-                        '$minutes Min',
+                        'Select Manual Override Time',
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: 15,
                           fontWeight: FontWeight.bold,
                           color: isSilenced
                               ? (isDark
-                                    ? const Color(0xFF475569)
+                                    ? const Color(0xFF64748B)
                                     : const Color(0xFF94A3B8))
                               : (isDark
                                     ? Colors.white
                                     : const Color(0xFF0F172A)),
                         ),
                       ),
+                      const SizedBox(height: 2),
+                      Text(
+                        isSilenced
+                            ? 'Mute is currently active'
+                            : 'Tap to pick custom duration & profile',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isDark
+                              ? const Color(0xFF94A3B8)
+                              : const Color(0xFF64748B),
+                        ),
+                      ),
                     ],
                   ),
                 ),
-              ),
-            );
-          }).toList(),
+                Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 16,
+                  color: isDark
+                      ? const Color(0xFF64748B)
+                      : const Color(0xFF94A3B8),
+                ),
+              ],
+            ),
+          ),
         ),
       ],
+    );
+  }
+
+  void _showSelectManualOverrideBottomSheet() {
+    int selectedMinutes = 30;
+    String selectedMode = 'silent';
+    final presets = [15, 30, 45, 60, 90, 120];
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Theme.of(context).cardTheme.color,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+            final sheetTextColor = isDark
+                ? Colors.white
+                : const Color(0xFF0F172A);
+            final sheetSubtitleColor = isDark
+                ? const Color(0xFF94A3B8)
+                : const Color(0xFF475569);
+
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 24,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 32,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Select Manual Override Time',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: sheetTextColor,
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: Icon(Icons.close, color: sheetSubtitleColor),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Quick Presets',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: sheetSubtitleColor,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: presets.map((mins) {
+                      final isSelected = selectedMinutes == mins;
+                      return ChoiceChip(
+                        label: Text('$mins Mins'),
+                        selected: isSelected,
+                        selectedColor: Theme.of(context).colorScheme.primary,
+                        labelStyle: TextStyle(
+                          color: isSelected
+                              ? Colors.white
+                              : (isDark
+                                    ? Colors.white
+                                    : const Color(0xFF0F172A)),
+                          fontWeight: isSelected
+                              ? FontWeight.bold
+                              : FontWeight.normal,
+                        ),
+                        onSelected: (val) {
+                          if (val) setSheetState(() => selectedMinutes = mins);
+                        },
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Custom Override Duration',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: sheetSubtitleColor,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        '$selectedMinutes mins',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Slider(
+                    value: selectedMinutes.toDouble(),
+                    min: 1,
+                    max: 300,
+                    divisions: 300,
+                    activeColor: Theme.of(context).colorScheme.primary,
+                    onChanged: (val) {
+                      setSheetState(() => selectedMinutes = val.round());
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Target Sound Mode',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: sheetSubtitleColor,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ChoiceChip(
+                          avatar: const Icon(Icons.volume_off, size: 16),
+                          label: const Center(child: Text('Silent')),
+                          selected: selectedMode == 'silent',
+                          selectedColor: Theme.of(context).colorScheme.primary,
+                          labelStyle: TextStyle(
+                            color: selectedMode == 'silent'
+                                ? Colors.white
+                                : (isDark
+                                      ? Colors.white
+                                      : const Color(0xFF0F172A)),
+                            fontWeight: FontWeight.bold,
+                          ),
+                          onSelected: (val) {
+                            if (val)
+                              setSheetState(() => selectedMode = 'silent');
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ChoiceChip(
+                          avatar: const Icon(Icons.vibration, size: 16),
+                          label: const Center(child: Text('Vibrate')),
+                          selected: selectedMode == 'vibrate',
+                          selectedColor: Theme.of(
+                            context,
+                          ).colorScheme.secondary,
+                          labelStyle: TextStyle(
+                            color: selectedMode == 'vibrate'
+                                ? Colors.white
+                                : (isDark
+                                      ? Colors.white
+                                      : const Color(0xFF0F172A)),
+                            fontWeight: FontWeight.bold,
+                          ),
+                          onSelected: (val) {
+                            if (val)
+                              setSheetState(() => selectedMode = 'vibrate');
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _manager.quickMute(selectedMinutes, selectedMode);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Theme.of(context).colorScheme.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Start Manual Override',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -957,134 +1196,6 @@ class _MainDashboardState extends State<MainDashboard>
     );
   }
 
-  Widget _buildSimulatorPanel(bool isDark) {
-    final panelBg = isDark ? const Color(0xFF111827) : const Color(0xFFE2E8F0);
-    final borderColor = isDark
-        ? const Color(0xFF1F2937)
-        : const Color(0xFFCBD5E1);
-    final titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
-
-    return Container(
-      decoration: BoxDecoration(
-        color: panelBg,
-        border: Border(top: BorderSide(color: borderColor, width: 2)),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.developer_mode_rounded,
-                      color: Theme.of(context).colorScheme.secondary,
-                      size: 18,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Simulation',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                        color: titleColor,
-                      ),
-                    ),
-                  ],
-                ),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'Fast Time',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: isDark
-                            ? const Color(0xFF94A3B8)
-                            : const Color(0xFF475569),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Transform.scale(
-                      scale: 0.8,
-                      child: CupertinoSwitch(
-                        activeColor: Theme.of(context).colorScheme.secondary,
-                        value: _manager.isTimeAccelerated,
-                        onChanged: (val) => _manager.toggleTimeAcceleration(val),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () => _manager.mockSalahNow('Dhuhr', 2),
-                    icon: const Icon(Icons.play_arrow_rounded, size: 16),
-                    label: const Text(
-                      'Mock Dhuhr (2m)',
-                      style: TextStyle(fontSize: 11),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: isDark
-                          ? const Color(0xFF1E293B)
-                          : Colors.white,
-                      foregroundColor: isDark
-                          ? Colors.white
-                          : const Color(0xFF0F172A),
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      side: BorderSide(
-                        color: isDark
-                            ? const Color(0xFF475569)
-                            : const Color(0xFFCBD5E1),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () => _manager.mockSalahNow('Jumu\'ah', 5),
-                    icon: const Icon(Icons.flash_on_rounded, size: 16),
-                    label: const Text(
-                      'Mock Jumuah (5m)',
-                      style: TextStyle(fontSize: 11),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: isDark
-                          ? const Color(0xFF1E293B)
-                          : Colors.white,
-                      foregroundColor: isDark
-                          ? Colors.white
-                          : const Color(0xFF0F172A),
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      side: BorderSide(
-                        color: isDark
-                            ? const Color(0xFF475569)
-                            : const Color(0xFFCBD5E1),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   // --- Bottom Sheet Configuration Editor ---
 
   void _showEditSalahBottomSheet(SalahConfiguration config) {
@@ -1255,8 +1366,8 @@ class _MainDashboardState extends State<MainDashboard>
                   Slider(
                     value: preMute.toDouble(),
                     min: 0,
-                    max: 15,
-                    divisions: 15,
+                    max: 60,
+                    divisions: 60,
                     activeColor: Theme.of(context).colorScheme.primary,
                     onChanged: (val) {
                       setSheetState(() => preMute = val.round());
@@ -1289,13 +1400,14 @@ class _MainDashboardState extends State<MainDashboard>
                   Slider(
                     value: duration.toDouble(),
                     min: 5,
-                    max: 60,
-                    divisions: 11,
+                    max: 120,
+                    divisions: 23,
                     activeColor: Theme.of(context).colorScheme.primary,
                     onChanged: (val) {
                       setSheetState(() => duration = val.round());
                     },
                   ),
+
                   const SizedBox(height: 16),
 
                   // 4. Mute Mode
@@ -1440,7 +1552,10 @@ class _WebPhoneFrameState extends State<WebPhoneFrame> {
           body: Column(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 10,
+                ),
                 decoration: const BoxDecoration(
                   color: Color(0xFF0F172A),
                   border: Border(bottom: BorderSide(color: Color(0xFF1E293B))),
@@ -1452,10 +1567,16 @@ class _WebPhoneFrameState extends State<WebPhoneFrame> {
                         Container(
                           padding: const EdgeInsets.all(6),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF0D9488).withValues(alpha: 0.2),
+                            color: const Color(
+                              0xFF0D9488,
+                            ).withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: const Icon(Icons.phone_android, color: Color(0xFF0D9488), size: 20),
+                          child: const Icon(
+                            Icons.phone_android,
+                            color: Color(0xFF0D9488),
+                            size: 20,
+                          ),
                         ),
                         const SizedBox(width: 12),
                         const Text(
@@ -1483,7 +1604,10 @@ class _WebPhoneFrameState extends State<WebPhoneFrame> {
                       ),
                       label: Text(
                         _showFrame ? 'Full Width View' : 'Phone Frame View',
-                        style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+                        style: const TextStyle(
+                          color: Color(0xFF94A3B8),
+                          fontSize: 13,
+                        ),
                       ),
                     ),
                   ],
@@ -1498,7 +1622,10 @@ class _WebPhoneFrameState extends State<WebPhoneFrame> {
                     decoration: BoxDecoration(
                       color: const Color(0xFF0F172A),
                       borderRadius: BorderRadius.circular(44),
-                      border: Border.all(color: const Color(0xFF334155), width: 10),
+                      border: Border.all(
+                        color: const Color(0xFF334155),
+                        width: 10,
+                      ),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withValues(alpha: 0.6),
@@ -1507,7 +1634,9 @@ class _WebPhoneFrameState extends State<WebPhoneFrame> {
                           offset: const Offset(0, 16),
                         ),
                         BoxShadow(
-                          color: const Color(0xFF0D9488).withValues(alpha: 0.15),
+                          color: const Color(
+                            0xFF0D9488,
+                          ).withValues(alpha: 0.15),
                           blurRadius: 40,
                           spreadRadius: 0,
                         ),
@@ -1520,7 +1649,10 @@ class _WebPhoneFrameState extends State<WebPhoneFrame> {
                           MediaQuery(
                             data: MediaQuery.of(context).copyWith(
                               size: Size(phoneWidth, phoneHeight),
-                              padding: const EdgeInsets.only(top: 28, bottom: 16),
+                              padding: const EdgeInsets.only(
+                                top: 28,
+                                bottom: 16,
+                              ),
                             ),
                             child: widget.child,
                           ),
@@ -1574,4 +1706,3 @@ class _WebPhoneFrameState extends State<WebPhoneFrame> {
     );
   }
 }
-
