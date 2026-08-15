@@ -219,20 +219,12 @@ class _MainDashboardState extends State<MainDashboard>
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
-                      Text(
-                        'Automatic Sound Profiles',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Color(0xFF64748B),
-                          fontWeight: FontWeight.w500,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
                     ],
                   ),
                 ),
               ],
             ),
+
 
             actions: [
               // Theme Toggle Button
@@ -253,7 +245,9 @@ class _MainDashboardState extends State<MainDashboard>
               Row(
                 children: [
                   Text(
-                    _manager.isAutoSilentEnabled ? 'Active' : 'Paused',
+                    _manager.isAutoSilentEnabled
+                        ? 'System Active'
+                        : 'System Paused',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -262,14 +256,16 @@ class _MainDashboardState extends State<MainDashboard>
                           : const Color(0xFFEF4444),
                     ),
                   ),
+                  const SizedBox(width: 6),
                   CupertinoSwitch(
                     activeColor: const Color(0xFF10B981),
                     value: _manager.isAutoSilentEnabled,
                     onChanged: (val) => _manager.toggleAutoSilent(val),
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 12),
                 ],
               ),
+
             ],
           ),
           body: Column(
@@ -281,9 +277,10 @@ class _MainDashboardState extends State<MainDashboard>
                     vertical: 8,
                   ),
                   children: [
-                    // 1. Current Status Card
-                    _buildStatusCard(isDark),
-                    const SizedBox(height: 20),
+                    // Active Override Banner (shown when a mute is running)
+                    if (_manager.isCurrentlySilenced)
+                      _buildActiveMuteBanner(isDark),
+
 
                     // 2. Android DND Permissions Reminder
                     if (Theme.of(context).platform == TargetPlatform.android &&
@@ -376,229 +373,92 @@ class _MainDashboardState extends State<MainDashboard>
 
   // --- UI Section Builders ---
 
-  Widget _buildStatusCard(bool isDark) {
-    final isSilenced = _manager.isCurrentlySilenced;
-
-    // Choose background colors based on active theme and silent state
-    final bgGradientColors = isSilenced
-        ? (isDark
-              ? [const Color(0xFF1E1B4B), const Color(0xFF1E293B)]
-              : [const Color(0xFFEEF2F6), const Color(0xFFE2E8F0)])
-        : (isDark
-              ? [const Color(0xFF0F172A), const Color(0xFF1E293B)]
-              : [const Color(0xFFF8FAFC), Colors.white]);
-
-    final borderColor = isSilenced
-        ? Theme.of(context).colorScheme.secondary.withOpacity(0.5)
-        : (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0));
-
+  Widget _buildActiveMuteBanner(bool isDark) {
     final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
     final secondaryTextColor = isDark
         ? const Color(0xFF94A3B8)
         : const Color(0xFF475569);
 
-    final currentSoundMode = isSilenced
-        ? (_manager.configs.firstWhere(
-            (c) => _manager.activeOverrideReason?.contains(c.name) ?? false,
-            orElse: () => SalahConfiguration(name: '', startTime: const TimeOfDay(hour: 0, minute: 0), targetMode: 'silent'),
-          ).targetMode)
-        : _manager.systemSoundMode;
-
-    final lowerMode = currentSoundMode.toLowerCase();
-    Color ringerTextColor;
-    String ringerTextLabel;
-    IconData ringerIcon;
-
-    if (lowerMode == 'silent' || lowerMode == 'dnd') {
-      ringerTextColor = const Color(0xFFEF4444); // Red
-      ringerTextLabel = 'SILENT';
-      ringerIcon = Icons.volume_off_rounded;
-    } else if (lowerMode == 'vibrate') {
-      ringerTextColor = const Color(0xFFF59E0B); // Yellow
-      ringerTextLabel = 'VIBRATE';
-      ringerIcon = Icons.vibration_rounded;
-    } else {
-      ringerTextColor = const Color(0xFF10B981); // Green
-      ringerTextLabel = 'NORMAL';
-      ringerIcon = Icons.notifications_active_rounded;
-    }
-
     return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: bgGradientColors,
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+        color: Theme.of(context).colorScheme.secondary.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.secondary.withOpacity(0.4),
+          width: 1.5,
         ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: borderColor, width: 1.5),
-        boxShadow: isSilenced
-            ? [
-                BoxShadow(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.secondary.withOpacity(0.15),
-                  blurRadius: 16,
-                  spreadRadius: 2,
-                ),
-              ]
-            : [],
       ),
-      padding: const EdgeInsets.all(20),
       child: Column(
         children: [
-          // 1. TOP SECTION: Active Guard / System Paused
-          Column(
+          Row(
             children: [
               Icon(
-                Icons.shield_rounded,
-                size: 38,
-                color: _manager.isAutoSilentEnabled
-                    ? const Color(0xFF0D9488)
-                    : Theme.of(context).colorScheme.secondary,
+                Icons.volume_off_rounded,
+                size: 28,
+                color: Theme.of(context).colorScheme.secondary,
               ),
-              const SizedBox(height: 6),
-              Text(
-                _manager.isAutoSilentEnabled
-                    ? 'Active Guard'
-                    : 'System Paused',
-                style: TextStyle(
-                  color: textColor,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                _manager.isAutoSilentEnabled
-                    ? 'Monitoring schedules'
-                    : 'Auto silent is off',
-                style: TextStyle(
-                  color: secondaryTextColor,
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          ),
-
-          // Active Mute Banner (if silenced)
-          if (isSilenced) ...[
-            const SizedBox(height: 16),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.secondary.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: Theme.of(context).colorScheme.secondary.withOpacity(0.3),
-                ),
-              ),
-              child: Column(
-                children: [
-                  Icon(
-                    Icons.volume_off_rounded,
-                    size: 32,
-                    color: Theme.of(context).colorScheme.secondary,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    _manager.activeOverrideReason ?? 'Salah Mode',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: textColor,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  if (_manager.activeOverrideEndTime != null)
-                    Builder(
-                      builder: (context) {
-                        final remaining = _manager.activeOverrideEndTime!.difference(
-                          _manager.currentTime,
-                        );
-                        final minutes = remaining.inMinutes;
-                        final seconds = remaining.inSeconds % 60;
-                        final timeStr =
-                            '${minutes}m ${seconds.toString().padLeft(2, '0')}s';
-                        return Text(
-                          'Restoring ringer profile in $timeStr',
-                          style: TextStyle(
-                            color: secondaryTextColor,
-                            fontSize: 13,
-                          ),
-                        );
-                      },
-                    ),
-                  const SizedBox(height: 12),
-                  OutlinedButton.icon(
-                    onPressed: () => _manager.cancelActiveMute(),
-                    icon: const Icon(Icons.volume_up_rounded, size: 16),
-                    label: const Text('Cancel Mute Now'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Theme.of(context).colorScheme.secondary,
-                      side: BorderSide(
-                        color: Theme.of(context).colorScheme.secondary,
-                        width: 1.5,
-                      ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 18,
-                        vertical: 8,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-
-          Divider(
-            color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
-            height: 28,
-          ),
-
-          // 2. BOTTOM SECTION: Ringer State
-          Column(
-            children: [
-              Icon(
-                ringerIcon,
-                size: 32,
-                color: ringerTextColor,
-              ),
-              const SizedBox(height: 6),
-              Text.rich(
-                TextSpan(
-                  text: 'Ringer: ',
-                  style: TextStyle(
-                    color: textColor,
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                  ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    TextSpan(
-                      text: ringerTextLabel,
+                    Text(
+                      _manager.activeOverrideReason ?? 'Salah Mute Active',
                       style: TextStyle(
-                        color: ringerTextColor,
+                        fontSize: 16,
                         fontWeight: FontWeight.bold,
+                        color: textColor,
                       ),
                     ),
+                    if (_manager.activeOverrideEndTime != null)
+                      Builder(
+                        builder: (context) {
+                          final remaining = _manager.activeOverrideEndTime!.difference(
+                            _manager.currentTime,
+                          );
+                          final minutes = remaining.inMinutes;
+                          final seconds = remaining.inSeconds % 60;
+                          final timeStr =
+                              '${minutes}m ${seconds.toString().padLeft(2, '0')}s';
+                          return Text(
+                            'Restoring ringer in $timeStr',
+                            style: TextStyle(
+                              color: secondaryTextColor,
+                              fontSize: 13,
+                            ),
+                          );
+                        },
+                      ),
                   ],
                 ),
               ),
-              const SizedBox(height: 2),
-              Text(
-                isSilenced ? 'Active override state' : 'Default profile state',
-                style: TextStyle(
-                  color: secondaryTextColor,
-                  fontSize: 12,
-                ),
-              ),
             ],
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => _manager.cancelActiveMute(),
+              icon: const Icon(Icons.volume_up_rounded, size: 16),
+              label: const Text('Cancel Mute Now'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Theme.of(context).colorScheme.secondary,
+                side: BorderSide(
+                  color: Theme.of(context).colorScheme.secondary,
+                  width: 1.5,
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+              ),
+            ),
           ),
         ],
       ),
     );
   }
+
 
 
   Widget _buildAndroidPermissionWarning() {
@@ -783,187 +643,193 @@ class _MainDashboardState extends State<MainDashboard>
                 ? const Color(0xFF94A3B8)
                 : const Color(0xFF475569);
 
-            return Padding(
-              padding: EdgeInsets.only(
-                left: 20,
-                right: 20,
-                top: 24,
-                bottom: MediaQuery.of(context).viewInsets.bottom + 32,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            return SafeArea(
+              top: false,
+              child: Padding(
+                padding: EdgeInsets.only(
+                  left: 20,
+                  right: 20,
+                  top: 24,
+                  bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Select Manual Override Time',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: sheetTextColor,
-                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Select Manual Override Time',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: sheetTextColor,
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => Navigator.pop(context),
+                            icon: Icon(Icons.close, color: sheetSubtitleColor),
+                          ),
+                        ],
                       ),
-                      IconButton(
-                        onPressed: () => Navigator.pop(context),
-                        icon: Icon(Icons.close, color: sheetSubtitleColor),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Quick Presets',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: sheetSubtitleColor,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: presets.map((mins) {
-                      final isSelected = selectedMinutes == mins;
-                      return ChoiceChip(
-                        label: Text('$mins Mins'),
-                        selected: isSelected,
-                        selectedColor: Theme.of(context).colorScheme.primary,
-                        labelStyle: TextStyle(
-                          color: isSelected
-                              ? Colors.white
-                              : (isDark
-                                    ? Colors.white
-                                    : const Color(0xFF0F172A)),
-                          fontWeight: isSelected
-                              ? FontWeight.bold
-                              : FontWeight.normal,
-                        ),
-                        onSelected: (val) {
-                          if (val) setSheetState(() => selectedMinutes = mins);
-                        },
-                      );
-                    }).toList(),
-                  ),
-                  const SizedBox(height: 20),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
+                      const SizedBox(height: 16),
                       Text(
-                        'Custom Override Duration',
+                        'Quick Presets',
                         style: TextStyle(
                           fontSize: 13,
                           color: sheetSubtitleColor,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: presets.map((mins) {
+                          final isSelected = selectedMinutes == mins;
+                          return ChoiceChip(
+                            label: Text('$mins Mins'),
+                            selected: isSelected,
+                            selectedColor: Theme.of(context).colorScheme.primary,
+                            labelStyle: TextStyle(
+                              color: isSelected
+                                  ? Colors.white
+                                  : (isDark
+                                        ? Colors.white
+                                        : const Color(0xFF0F172A)),
+                              fontWeight: isSelected
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                            ),
+                            onSelected: (val) {
+                              if (val) setSheetState(() => selectedMinutes = mins);
+                            },
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Custom Override Duration',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: sheetSubtitleColor,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            '$selectedMinutes mins',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Theme.of(context).colorScheme.primary,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Slider(
+                        value: selectedMinutes.toDouble(),
+                        min: 1,
+                        max: 300,
+                        divisions: 300,
+                        activeColor: Theme.of(context).colorScheme.primary,
+                        onChanged: (val) {
+                          setSheetState(() => selectedMinutes = val.round());
+                        },
+                      ),
+                      const SizedBox(height: 16),
                       Text(
-                        '$selectedMinutes mins',
+                        'Target Sound Mode',
                         style: TextStyle(
-                          fontSize: 14,
-                          color: Theme.of(context).colorScheme.primary,
+                          fontSize: 13,
+                          color: sheetSubtitleColor,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                    ],
-                  ),
-                  Slider(
-                    value: selectedMinutes.toDouble(),
-                    min: 1,
-                    max: 300,
-                    divisions: 300,
-                    activeColor: Theme.of(context).colorScheme.primary,
-                    onChanged: (val) {
-                      setSheetState(() => selectedMinutes = val.round());
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Target Sound Mode',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: sheetSubtitleColor,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ChoiceChip(
-                          avatar: const Icon(Icons.volume_off, size: 16),
-                          label: const Center(child: Text('Do Not Disturb')),
-                          selected: selectedMode == 'silent',
-                          selectedColor: Theme.of(context).colorScheme.primary,
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ChoiceChip(
+                              avatar: const Icon(Icons.volume_off, size: 16),
+                              label: const Center(child: Text('Do Not Disturb')),
+                              selected: selectedMode == 'silent',
+                              selectedColor: Theme.of(context).colorScheme.primary,
 
-                          labelStyle: TextStyle(
-                            color: selectedMode == 'silent'
-                                ? Colors.white
-                                : (isDark
-                                      ? Colors.white
-                                      : const Color(0xFF0F172A)),
-                            fontWeight: FontWeight.bold,
+                              labelStyle: TextStyle(
+                                color: selectedMode == 'silent'
+                                    ? Colors.white
+                                    : (isDark
+                                          ? Colors.white
+                                          : const Color(0xFF0F172A)),
+                                fontWeight: FontWeight.bold,
+                              ),
+                              onSelected: (val) {
+                                if (val)
+                                  setSheetState(() => selectedMode = 'silent');
+                              },
+                            ),
                           ),
-                          onSelected: (val) {
-                            if (val)
-                              setSheetState(() => selectedMode = 'silent');
-                          },
-                        ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: ChoiceChip(
+                              avatar: const Icon(Icons.vibration, size: 16),
+                              label: const Center(child: Text('Vibrate')),
+                              selected: selectedMode == 'vibrate',
+                              selectedColor: Theme.of(
+                                context,
+                              ).colorScheme.secondary,
+                              labelStyle: TextStyle(
+                                color: selectedMode == 'vibrate'
+                                    ? Colors.white
+                                    : (isDark
+                                          ? Colors.white
+                                          : const Color(0xFF0F172A)),
+                                fontWeight: FontWeight.bold,
+                              ),
+                              onSelected: (val) {
+                                if (val)
+                                  setSheetState(() => selectedMode = 'vibrate');
+                              },
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ChoiceChip(
-                          avatar: const Icon(Icons.vibration, size: 16),
-                          label: const Center(child: Text('Vibrate')),
-                          selected: selectedMode == 'vibrate',
-                          selectedColor: Theme.of(
-                            context,
-                          ).colorScheme.secondary,
-                          labelStyle: TextStyle(
-                            color: selectedMode == 'vibrate'
-                                ? Colors.white
-                                : (isDark
-                                      ? Colors.white
-                                      : const Color(0xFF0F172A)),
-                            fontWeight: FontWeight.bold,
-                          ),
-                          onSelected: (val) {
-                            if (val)
-                              setSheetState(() => selectedMode = 'vibrate');
+                      const SizedBox(height: 24),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            _manager.quickMute(selectedMinutes, selectedMode);
                           },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Theme.of(context).colorScheme.primary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text(
+                            'Start Manual Override',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 24),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        _manager.quickMute(selectedMinutes, selectedMode);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Theme.of(context).colorScheme.primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text(
-                        'Start Manual Override',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
             );
+
           },
         );
       },
@@ -1212,17 +1078,21 @@ class _MainDashboardState extends State<MainDashboard>
                 ? const Color(0xFF94A3B8)
                 : const Color(0xFF475569);
 
-            return Padding(
-              padding: EdgeInsets.only(
-                left: 20,
-                right: 20,
-                top: 24,
-                bottom: MediaQuery.of(context).viewInsets.bottom + 32,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+            return SafeArea(
+              top: false,
+              child: Padding(
+                padding: EdgeInsets.only(
+                  left: 20,
+                  right: 20,
+                  top: 24,
+                  bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -1500,13 +1370,17 @@ class _MainDashboardState extends State<MainDashboard>
                   ),
                 ],
               ),
-            );
-          },
+            ),
+          ),
         );
       },
     );
+  },
+);
   }
 }
+
+
 
 class WebPhoneFrame extends StatefulWidget {
   final Widget child;
