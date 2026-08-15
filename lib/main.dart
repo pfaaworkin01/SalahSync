@@ -379,7 +379,7 @@ class _MainDashboardState extends State<MainDashboard>
   Widget _buildStatusCard(bool isDark) {
     final isSilenced = _manager.isCurrentlySilenced;
 
-    // Choose beautiful background colors based on active theme and silent state
+    // Choose background colors based on active theme and silent state
     final bgGradientColors = isSilenced
         ? (isDark
               ? [const Color(0xFF1E1B4B), const Color(0xFF1E293B)]
@@ -396,6 +396,32 @@ class _MainDashboardState extends State<MainDashboard>
     final secondaryTextColor = isDark
         ? const Color(0xFF94A3B8)
         : const Color(0xFF475569);
+
+    final currentSoundMode = isSilenced
+        ? (_manager.configs.firstWhere(
+            (c) => _manager.activeOverrideReason?.contains(c.name) ?? false,
+            orElse: () => SalahConfiguration(name: '', startTime: const TimeOfDay(hour: 0, minute: 0), targetMode: 'silent'),
+          ).targetMode)
+        : _manager.systemSoundMode;
+
+    final lowerMode = currentSoundMode.toLowerCase();
+    Color ringerTextColor;
+    String ringerTextLabel;
+    IconData ringerIcon;
+
+    if (lowerMode == 'silent' || lowerMode == 'dnd') {
+      ringerTextColor = const Color(0xFFEF4444); // Red
+      ringerTextLabel = 'SILENT';
+      ringerIcon = Icons.volume_off_rounded;
+    } else if (lowerMode == 'vibrate') {
+      ringerTextColor = const Color(0xFFF59E0B); // Yellow
+      ringerTextLabel = 'VIBRATE';
+      ringerIcon = Icons.vibration_rounded;
+    } else {
+      ringerTextColor = const Color(0xFF10B981); // Green
+      ringerTextLabel = 'NORMAL';
+      ringerIcon = Icons.notifications_active_rounded;
+    }
 
     return Container(
       decoration: BoxDecoration(
@@ -421,209 +447,159 @@ class _MainDashboardState extends State<MainDashboard>
       padding: const EdgeInsets.all(20),
       child: Column(
         children: [
-          // Full Width Current State Indicator Badge
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: isSilenced
-                  ? Theme.of(context).colorScheme.secondary.withOpacity(0.15)
-                  : (isDark
-                        ? Colors.white.withOpacity(0.05)
-                        : Colors.black.withOpacity(0.03)),
-              borderRadius: BorderRadius.circular(100),
-              border: Border.all(
-                color: isSilenced
-                    ? Theme.of(context).colorScheme.secondary
-                    : (isDark
-                          ? const Color(0xFF475569)
-                          : const Color(0xFFCBD5E1)),
-                width: 1,
+          // 1. TOP SECTION: Active Guard / System Paused
+          Column(
+            children: [
+              Icon(
+                Icons.shield_rounded,
+                size: 38,
+                color: _manager.isAutoSilentEnabled
+                    ? const Color(0xFF0D9488)
+                    : Theme.of(context).colorScheme.secondary,
               ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (isSilenced)
-                  AnimatedBuilder(
-                    animation: _pulseController!,
-                    builder: (context, child) {
-                      return Opacity(
-                        opacity: _pulseController!.value,
-                        child: Container(
-                          width: 10,
-                          height: 10,
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.secondary,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                      );
-                    },
-                  )
-                else
-                  const Icon(
-                    Icons.check_circle_outline_rounded,
-                    color: Color(0xFF10B981),
-                    size: 16,
-                  ),
-                const SizedBox(width: 8),
-                Text(
-                  isSilenced ? 'SILENT MODE ACTIVE' : 'RINGER NORMAL',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: isSilenced
-                        ? Theme.of(context).colorScheme.secondary
-                        : secondaryTextColor,
-                    letterSpacing: 0.8,
-                  ),
+              const SizedBox(height: 6),
+              Text(
+                _manager.isAutoSilentEnabled
+                    ? 'Active Guard'
+                    : 'System Paused',
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
                 ),
-              ],
-            ),
-          ),
-
-          Divider(
-            color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
-            height: 30,
-          ),
-
-          if (isSilenced) ...[
-            Icon(
-              Icons.volume_off_rounded,
-              size: 48,
-              color: Theme.of(context).colorScheme.secondary,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              _manager.activeOverrideReason ?? 'Salah Mode',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: textColor,
               ),
-            ),
-            const SizedBox(height: 6),
-            if (_manager.activeOverrideEndTime != null)
-              Builder(
-                builder: (context) {
-                  final remaining = _manager.activeOverrideEndTime!.difference(
-                    _manager.currentTime,
-                  );
-                  final minutes = remaining.inMinutes;
-                  final seconds = remaining.inSeconds % 60;
-                  final timeStr =
-                      '${minutes}m ${seconds.toString().padLeft(2, '0')}s';
-                  return Text(
-                    'Restoring ringer profile in $timeStr',
-                    style: TextStyle(
-                      color: isDark
-                          ? const Color(0xFFE2E8F0)
-                          : const Color(0xFF334155),
-                      fontSize: 14,
-                    ),
-                  );
-                },
-              ),
-            if (isSilenced) ...[
-              const SizedBox(height: 14),
-              OutlinedButton.icon(
-                onPressed: () => _manager.cancelActiveMute(),
-                icon: const Icon(Icons.volume_up_rounded, size: 18),
-                label: const Text('Cancel Mute Now'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Theme.of(context).colorScheme.secondary,
-                  side: BorderSide(
-                    color: Theme.of(context).colorScheme.secondary,
-                    width: 1.5,
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 10,
-                  ),
+              const SizedBox(height: 2),
+              Text(
+                _manager.isAutoSilentEnabled
+                    ? 'Monitoring schedules'
+                    : 'Auto silent is off',
+                style: TextStyle(
+                  color: secondaryTextColor,
+                  fontSize: 12,
                 ),
               ),
             ],
-          ] else ...[
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    children: [
-                      Icon(
-                        Icons.shield_rounded,
-                        size: 36,
-                        color: _manager.isAutoSilentEnabled
-                            ? const Color(0xFF0D9488)
-                            : Theme.of(context).colorScheme.secondary,
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        _manager.isAutoSilentEnabled
-                            ? 'Active Guard'
-                            : 'System Paused',
+          ),
 
-                        style: TextStyle(
-                          color: textColor,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        _manager.isAutoSilentEnabled
-                            ? 'Monitoring schedules'
-                            : 'Auto silent is off',
-                        style: TextStyle(
-                          color: secondaryTextColor,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ],
+          // Active Mute Banner (if silenced)
+          if (isSilenced) ...[
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.secondary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.secondary.withOpacity(0.3),
+                ),
+              ),
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.volume_off_rounded,
+                    size: 32,
+                    color: Theme.of(context).colorScheme.secondary,
                   ),
-                ),
-                Container(
-                  width: 1,
-                  height: 60,
-                  color: isDark
-                      ? const Color(0xFF334155)
-                      : const Color(0xFFE2E8F0),
-                ),
-                Expanded(
-                  child: Column(
-                    children: [
-                      Icon(
-                        Icons.settings_phone_rounded,
-                        size: 36,
-                        color: secondaryTextColor,
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Ringer: ${_manager.systemSoundMode.toUpperCase()}',
-                        style: TextStyle(
-                          color: textColor,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      const Text(
-                        'Default profile state',
-                        style: TextStyle(
-                          color: Color(0xFF64748B),
-                          fontSize: 11,
-                        ),
-                      ),
-                    ],
+                  const SizedBox(height: 8),
+                  Text(
+                    _manager.activeOverrideReason ?? 'Salah Mode',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: textColor,
+                    ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 4),
+                  if (_manager.activeOverrideEndTime != null)
+                    Builder(
+                      builder: (context) {
+                        final remaining = _manager.activeOverrideEndTime!.difference(
+                          _manager.currentTime,
+                        );
+                        final minutes = remaining.inMinutes;
+                        final seconds = remaining.inSeconds % 60;
+                        final timeStr =
+                            '${minutes}m ${seconds.toString().padLeft(2, '0')}s';
+                        return Text(
+                          'Restoring ringer profile in $timeStr',
+                          style: TextStyle(
+                            color: secondaryTextColor,
+                            fontSize: 13,
+                          ),
+                        );
+                      },
+                    ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: () => _manager.cancelActiveMute(),
+                    icon: const Icon(Icons.volume_up_rounded, size: 16),
+                    label: const Text('Cancel Mute Now'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Theme.of(context).colorScheme.secondary,
+                      side: BorderSide(
+                        color: Theme.of(context).colorScheme.secondary,
+                        width: 1.5,
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 8,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
+
+          Divider(
+            color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+            height: 28,
+          ),
+
+          // 2. BOTTOM SECTION: Ringer State
+          Column(
+            children: [
+              Icon(
+                ringerIcon,
+                size: 32,
+                color: ringerTextColor,
+              ),
+              const SizedBox(height: 6),
+              Text.rich(
+                TextSpan(
+                  text: 'Ringer: ',
+                  style: TextStyle(
+                    color: textColor,
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  children: [
+                    TextSpan(
+                      text: ringerTextLabel,
+                      style: TextStyle(
+                        color: ringerTextColor,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                isSilenced ? 'Active override state' : 'Default profile state',
+                style: TextStyle(
+                  color: secondaryTextColor,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
   }
+
 
   Widget _buildAndroidPermissionWarning() {
     return Card(
@@ -917,9 +893,10 @@ class _MainDashboardState extends State<MainDashboard>
                       Expanded(
                         child: ChoiceChip(
                           avatar: const Icon(Icons.volume_off, size: 16),
-                          label: const Center(child: Text('Silent')),
+                          label: const Center(child: Text('Do Not Disturb')),
                           selected: selectedMode == 'silent',
                           selectedColor: Theme.of(context).colorScheme.primary,
+
                           labelStyle: TextStyle(
                             color: selectedMode == 'silent'
                                 ? Colors.white
@@ -998,9 +975,14 @@ class _MainDashboardState extends State<MainDashboard>
         ? (isDark ? Colors.white : const Color(0xFF0F172A))
         : (isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8));
 
+    final subtitleColor = isDark
+        ? const Color(0xFF94A3B8)
+        : const Color(0xFF64748B);
+
     final inactiveIconBg = isDark
         ? const Color(0xFF334155).withOpacity(0.2)
         : const Color(0xFFE2E8F0);
+
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 6),
@@ -1048,10 +1030,10 @@ class _MainDashboardState extends State<MainDashboard>
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${config.preMuteMinutes}m buffer • ${config.silentDurationMinutes}m silent (${config.targetMode})',
-                      style: const TextStyle(
+                      '${config.preMuteMinutes}m buffer • ${config.silentDurationMinutes}m ${config.targetMode == 'silent' ? 'Do Not Disturb' : 'Vibrate'}',
+                      style: TextStyle(
                         fontSize: 12,
-                        color: Color(0xFF64748B),
+                        color: subtitleColor,
                       ),
                     ),
                   ],
@@ -1425,10 +1407,11 @@ class _MainDashboardState extends State<MainDashboard>
                       Expanded(
                         child: ChoiceChip(
                           label: const Center(
-                            child: Text('Silent (Do Not Disturb)'),
+                            child: Text('Do Not Disturb'),
                           ),
                           selected: mode == 'silent',
                           selectedColor: Theme.of(context).colorScheme.primary,
+
                           labelStyle: TextStyle(
                             color: mode == 'silent'
                                 ? Colors.white
